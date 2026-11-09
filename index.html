@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DENTLY CRM</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--navy:#081220;--teal:#00B8A9;--mint:#7EE6D1;--white:#F3F5F7;--muted:#A4B0BE}
+*{box-sizing:border-box}
+body{margin:0;background:#eef2f5;color:var(--navy);font:15px Tahoma,Arial,sans-serif}
+header{background:var(--navy);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between}
+header strong{font:700 27px Arial;letter-spacing:2px}
+header small{display:block;color:var(--mint);font-size:10px;letter-spacing:2px}
+.shell{max-width:1100px;margin:auto;padding:22px}
+.card{background:#fff;border-radius:17px;padding:22px;margin-bottom:16px;box-shadow:0 5px 24px #0812200c}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,textarea,button{font:inherit;border-radius:9px;padding:11px;border:1px solid #d5dfe5;min-width:0}
+input,select{flex:1}
+button{background:var(--teal);color:var(--navy);font-weight:bold;border:0;cursor:pointer}
+button.secondary{background:#e5f7f3}
+button:disabled{opacity:.5}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+nav button{background:#fff}
+nav button.active{background:var(--navy);color:#fff}
+h2{margin:0 0 14px}
+table{width:100%;border-collapse:collapse;text-align:right}
+th,td{padding:11px;border-bottom:1px solid #e7edf1}
+th{color:#627482;font-size:12px}
+#status{margin:10px 0;color:#345}
+#error{color:#a52235;white-space:pre-wrap;min-height:22px}
+#gbtn{display:flex;justify-content:center;min-height:44px;margin-top:18px}
+.metric{background:#f3f8f9;padding:15px;border-radius:12px;min-width:150px;flex:1}
+.metric b{display:block;font-size:23px;margin-top:8px}
+label{display:block;font-size:13px;margin:9px 0 5px}
+textarea{width:100%;min-height:85px}
+.hidden{display:none!important}
+.scroll{overflow-x:auto}
+@media(max-width:600px){.shell{padding:12px}.card{padding:15px}header{padding:14px}header strong{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+  <div><strong>DENTLY</strong><small>SMART DENTAL SUPPLY · CRM</small></div>
+  <span id="identity"></span>
+</header>
+
+<main class="shell">
+  <section id="login" class="card">
+    <h2>تسجيل الدخول</h2>
+    <p>الدخول مخصص للمسؤولين والمندوبات المعتمدين ضمن منظومة DENTLY.</p>
+    <div id="gbtn"></div>
+    <p id="error"></p>
+  </section>
+
+  <section id="app" class="hidden">
+    <nav>
+      <button onclick="tab('overview')" id="tab-overview">الأداء</button>
+      <button onclick="tab('customers')" id="tab-customers">العملاء</button>
+      <button onclick="tab('activities')" id="tab-activities">الأنشطة</button>
+      <button onclick="tab('newActivity')" id="tab-newActivity">تسجيل نشاط</button>
+      <button onclick="logout()" class="secondary">خروج</button>
+    </nav>
+    <p id="status"></p>
+
+    <section id="overview" class="card view">
+      <h2>مؤشرات الأداء</h2>
+      <div class="row">
+        <input type="month" id="month">
+        <select id="rep" class="hidden"></select>
+        <button onclick="performance()">عرض التقرير</button>
+        <button id="teamBtn" class="hidden secondary" onclick="team()">الفريق</button>
+      </div>
+      <div id="metrics" class="row" style="margin-top:16px"></div>
+    </section>
+
+    <section id="customers" class="card view hidden">
+      <h2>العملاء</h2>
+      <div class="row">
+        <input id="search" placeholder="بحث بالاسم أو الهاتف أو المعرف">
+        <button onclick="customers()">بحث</button>
+      </div>
+      <div class="scroll" id="customerTable"></div>
+    </section>
+
+    <section id="activities" class="card view hidden">
+      <h2>سجل الأنشطة</h2>
+      <button onclick="activities()">تحديث</button>
+      <div class="scroll" id="activityTable"></div>
+    </section>
+
+    <section id="newActivity" class="card view hidden">
+      <h2>تسجيل نشاط جديد</h2>
+      <p>هذه العملية متاحة للمندوبة وفق ملكية العميل وصلاحيات الوحدة الرابعة.</p>
+      <label>معرّف العميل</label>
+      <input id="customerId" placeholder="Customer ID">
+      <label>نوع النشاط</label>
+      <select id="activityType">
+        <option value="CONTACT">أول تواصل / متابعة</option>
+        <option value="FIELD_VISIT">زيارة ميدانية</option>
+        <option value="POTENTIAL_LEAD">عميل محتمل</option>
+        <option value="LAB_LEAD">فرصة LAB</option>
+      </select>
+      <label>قناة التواصل</label>
+      <select id="channel"><option>هاتف</option><option>واتساب</option><option>زيارة ميدانية</option></select>
+      <label>تاريخ النشاط</label>
+      <input id="activityDate" type="date">
+      <label>ملاحظات</label>
+      <textarea id="notes"></textarea>
+      <button onclick="saveActivity()">إرسال للمراجعة</button>
+    </section>
+  </section>
+</main>
+
+<script>
+/* ====== عدّل هذين السطرين فقط ====== */
+const CLIENT_ID = '882297179564-8c9j6i2v1i6inb0v97hqfqts3l3vgu3j.apps.googleusercontent.com';
+const API_URL   = 'https://script.google.com/macros/s/AKfycbykeEilO2E2FpfZBh9OFqM0MOCdk_NCrUOAdBw3Ba1dIBcIOzbG4R1Wv2QYMOccO4C1/exec';
+/* =================================== */
+
+let session = sessionStorage.getItem('dently_session') || '', user = null;
+const $ = id => document.getElementById(id);
+const safe = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ---------- الاتصال بالخادم (بديل google.script.run) ---------- */
+async function rpc(fn, args) {
+  const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn, args }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || 'خطأ غير معروف');
+  return j.data;
+}
+
+function call(name, args, ok) {
+  $('status').textContent = 'جارٍ التحميل...';
+  rpc(name, args).then(x => { $('status').textContent = ''; ok(x); })
+    .catch(e => {
+      $('status').textContent = '';
+      if (/الجلسة/.test(e.message)) return logout(e.message);
+      alert(e.message);
+    });
+}
+
+/* ---------- الدخول والخروج ---------- */
+async function onCredential(resp) {
+  $('error').textContent = 'جارٍ التحقق…';
+  try {
+    const u = await rpc('login', [resp.credential]);
+    session = u.session;
+    sessionStorage.setItem('dently_session', session);
+    $('error').textContent = '';
+    start();
+  } catch (e) {
+    $('error').textContent = e.message || 'تعذر تسجيل الدخول.';
+  }
+}
+
+function start() {
+  rpc('dw08Bootstrap', [session]).then(r => {
+    user = r.user;
+    $('login').classList.add('hidden');
+    $('app').classList.remove('hidden');
+    $('identity').textContent = user.role === 'ADMIN' ? 'الإدارة' : 'المندوبة ' + user.srId;
+    $('month').value = new Date().toISOString().slice(0, 7);
+    const isAdmin = user.role === 'ADMIN';
+    $('rep').classList.toggle('hidden', !isAdmin);
+    $('teamBtn').classList.toggle('hidden', !isAdmin);
+    if (isAdmin) {
+      $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
+    }
+    tab('overview');
+    performance();
+  }).catch(e => logout(e.message));
+}
+
+function logout(msg) {
+  if (session) rpc('logout', [session]).catch(() => {});
+  session = ''; user = null;
+  sessionStorage.removeItem('dently_session');
+  $('app').classList.add('hidden');
+  $('login').classList.remove('hidden');
+  $('identity').textContent = '';
+  $('error').textContent = typeof msg === 'string' ? msg : '';
+}
+
+/* ---------- الواجهة (كما هي من WebApp_08) ---------- */
+function tab(id) {
+  document.querySelectorAll('.view').forEach(x => x.classList.add('hidden'));
+  $(id).classList.remove('hidden');
+  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
+  $('tab-' + id).classList.add('active');
+  if (id === 'customers') customers();
+  if (id === 'activities') activities();
+}
+function metric(name, value) { return '<div class="metric">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
+function performance() {
+  call('dw08Performance', [session, $('month').value, user.role === 'ADMIN' ? $('rep').value : ''], r => {
+    $('metrics').innerHTML = metric('العملاء الجدد', r.newCustomers) + metric('الأنشطة المعتمدة', r.approvedActivities) +
+      metric('رصيد النقاط', r.currentPointsBalance) + metric('المبيعات المحصلة', r.revenue) +
+      metric('الربح الإجمالي', r.grossProfit) + metric('العمولات المعتمدة', r.approvedCommissions);
+  });
+}
+function team() {
+  call('dw08TeamPerformance', [session, $('month').value], r => {
+    $('metrics').innerHTML = (r.reps || []).map(x => '<div class="metric"><b>' + safe(x.name) + '</b>مبيعات: ' + safe(x.revenue) + '<p>عمولات: ' + safe(x.approvedCommissions) + '</p></div>').join('');
+  });
+}
+function table(headers, rows) {
+  return '<table><thead><tr>' + headers.map(x => '<th>' + safe(x[0]) + '</th>').join('') + '</tr></thead><tbody>' +
+    rows.map(r => '<tr>' + headers.map(x => '<td>' + safe(r[x[1]]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+}
+function customers() {
+  call('dw08Customers', [session, $('search').value], r => {
+    $('customerTable').innerHTML = table([['المعرف','id'],['الاسم','name'],['النوع','type'],['الهاتف','phone'],['المنطقة','area']], r);
+  });
+}
+function activities() {
+  call('dw08Activities', [session], r => {
+    $('activityTable').innerHTML = '<pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + safe(JSON.stringify(r, null, 2)) + '</pre>';
+  });
+}
+function saveActivity() {
+  const p = { customerId: $('customerId').value.trim(), activityType: $('activityType').value, channel: $('channel').value, activityDate: $('activityDate').value, notes: $('notes').value };
+  if (!p.customerId || !p.activityDate) return alert('معرف العميل والتاريخ مطلوبان');
+  call('dw08CreateActivity', [session, p], r => { alert(r.message || 'تم تسجيل النشاط'); tab('activities'); });
+}
+
+/* ---------- التهيئة ---------- */
+window.addEventListener('load', () => {
+  if (session) start();
+  const wait = setInterval(() => {
+    if (!window.google || !google.accounts) return;
+    clearInterval(wait);
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onCredential });
+    google.accounts.id.renderButton($('gbtn'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ar', width: 280 });
+  }, 100);
+});
+</script>
+</body>
+</html>
