@@ -68,7 +68,7 @@ textarea{width:100%;min-height:85px}
       <div class="row">
         <input type="month" id="month">
         <select id="rep" class="hidden"></select>
-        <button onclick="performance()">عرض التقرير</button>
+       <button onclick="loadPerformance()">عرض التقرير</button>
         <button id="teamBtn" class="hidden secondary" onclick="team()">الفريق</button>
       </div>
       <div id="metrics" class="row" style="margin-top:16px"></div>
@@ -168,7 +168,7 @@ function start() {
       $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
     }
     tab('overview');
-    performance();
+    loadPerformance();
   }).catch(e => logout(e.message));
 }
 
@@ -192,7 +192,7 @@ function tab(id) {
   if (id === 'activities') activities();
 }
 function metric(name, value) { return '<div class="metric">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
-function performance() {
+function loadPerformance() {
   call('dw08Performance', [session, $('month').value, user.role === 'ADMIN' ? $('rep').value : ''], r => {
     $('metrics').innerHTML = metric('العملاء الجدد', r.newCustomers) + metric('الأنشطة المعتمدة', r.approvedActivities) +
       metric('رصيد النقاط', r.currentPointsBalance) + metric('المبيعات المحصلة', r.revenue) +
