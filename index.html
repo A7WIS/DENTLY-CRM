@@ -55,20 +55,27 @@ textarea{width:100%;min-height:85px}
 
   <section id="app" class="hidden">
     <nav>
+      <button onclick="tab('mine')" id="tab-mine">حسابي</button>
       <button onclick="tab('overview')" id="tab-overview">الأداء</button>
       <button onclick="tab('customers')" id="tab-customers">العملاء</button>
       <button onclick="tab('activities')" id="tab-activities">الأنشطة</button>
-      <button onclick="tab('newActivity')" id="tab-newActivity">تسجيل نشاط</button>
+      <button onclick="tab('newCustomer')" id="tab-newCustomer">عميل جديد</button>
       <button onclick="logout()" class="secondary">خروج</button>
     </nav>
     <p id="status"></p>
 
-    <section id="overview" class="card view">
+    <section id="mine" class="card view hidden">
+      <h2>حسابي هذا الشهر</h2>
+      <div class="row"><input type="month" id="myMonth"><button onclick="loadMine()">عرض</button></div>
+      <div id="mineBody"></div>
+    </section>
+
+    <section id="overview" class="card view hidden">
       <h2>مؤشرات الأداء</h2>
       <div class="row">
         <input type="month" id="month">
         <select id="rep" class="hidden"></select>
-       <button onclick="loadPerformance()">عرض التقرير</button>
+        <button onclick="loadPerformance()">عرض التقرير</button>
         <button id="teamBtn" class="hidden secondary" onclick="team()">الفريق</button>
       </div>
       <div id="metrics" class="row" style="margin-top:16px"></div>
@@ -82,6 +89,7 @@ textarea{width:100%;min-height:85px}
       </div>
       <div class="scroll" id="customerTable"></div>
     </section>
+    <div id="detail"></div>
 
     <section id="activities" class="card view hidden">
       <h2>سجل الأنشطة</h2>
@@ -89,34 +97,22 @@ textarea{width:100%;min-height:85px}
       <div class="scroll" id="activityTable"></div>
     </section>
 
-    <section id="newActivity" class="card view hidden">
-      <h2>تسجيل نشاط جديد</h2>
-      <p>هذه العملية متاحة للمندوبة وفق ملكية العميل وصلاحيات الوحدة الرابعة.</p>
-      <label>معرّف العميل</label>
-      <input id="customerId" placeholder="Customer ID">
-      <label>نوع النشاط</label>
-      <select id="activityType">
-        <option value="CONTACT">أول تواصل / متابعة</option>
-        <option value="FIELD_VISIT">زيارة ميدانية</option>
-        <option value="POTENTIAL_LEAD">عميل محتمل</option>
-        <option value="LAB_LEAD">فرصة LAB</option>
-      </select>
-      <label>قناة التواصل</label>
-      <select id="channel"><option>هاتف</option><option>واتساب</option><option>زيارة ميدانية</option></select>
-      <label>تاريخ النشاط</label>
-      <input id="activityDate" type="date">
-      <label>ملاحظات</label>
-      <textarea id="notes"></textarea>
-      <button onclick="saveActivity()">إرسال للمراجعة</button>
+    <section id="newCustomer" class="card view hidden">
+      <h2>تسجيل عميل جديد</h2>
+      <label>النوع</label>
+      <select id="ncType" onchange="ncType()"><option>طبيب</option><option>طالب</option></select>
+      <label>الاسم الثلاثي</label><input id="ncName">
+      <label>رقم الهاتف (09xxxxxxxx)</label><input id="ncPhone" inputmode="numeric" maxlength="10">
+      <div id="ncDoc"><label>منطقة العيادة</label><input id="ncArea"></div>
+      <div id="ncStu" class="hidden"><label>الجامعة</label><input id="ncUni"><label>السنة الدراسية</label><input id="ncYear"></div>
+      <label>ملاحظات</label><textarea id="ncNotes"></textarea>
+      <button onclick="addCustomer()">تسجيل العميل</button>
     </section>
   </section>
 </main>
 
+<script src="config.js"></script>
 <script>
-/* ====== عدّل هذين السطرين فقط ====== */
-const CLIENT_ID = '882297179564-8c9j6i2v1i6inb0v97hqfqts3l3vgu3j.apps.googleusercontent.com';
-const API_URL   = 'https://script.google.com/macros/s/AKfycbykeEilO2E2FpfZBh9OFqM0MOCdk_NCrUOAdBw3Ba1dIBcIOzbG4R1Wv2QYMOccO4C1/exec';
-/* =================================== */
 
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 const $ = id => document.getElementById(id);
@@ -164,11 +160,14 @@ function start() {
     const isAdmin = user.role === 'ADMIN';
     $('rep').classList.toggle('hidden', !isAdmin);
     $('teamBtn').classList.toggle('hidden', !isAdmin);
+    $('tab-newCustomer').classList.toggle('hidden', isAdmin);
     if (isAdmin) {
       $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
     }
-    tab('overview');
-    loadPerformance();
+    $('tab-overview').classList.toggle('hidden', !isAdmin);
+    $('tab-mine').classList.toggle('hidden', isAdmin);
+    $('myMonth').value = today().slice(0, 7);
+    if (isAdmin) { tab('overview'); loadPerformance(); } else { tab('mine'); loadMine(); }
   }).catch(e => logout(e.message));
 }
 
@@ -188,6 +187,7 @@ function tab(id) {
   $(id).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   $('tab-' + id).classList.add('active');
+  if (id !== 'customers') $('detail').innerHTML = '';
   if (id === 'customers') customers();
   if (id === 'activities') activities();
 }
@@ -208,20 +208,101 @@ function table(headers, rows) {
   return '<table><thead><tr>' + headers.map(x => '<th>' + safe(x[0]) + '</th>').join('') + '</tr></thead><tbody>' +
     rows.map(r => '<tr>' + headers.map(x => '<td>' + safe(r[x[1]]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
 }
+let cur = '', curData = null, rows = [];
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const TL = { CONTACT: 'تواصل فعلي', POTENTIAL_LEAD: 'عميل محتمل', REGISTRATION: 'تسجيل التطبيق', SUPPLY_FIRST_ORDER: 'أول طلب Supply', SUPPLY_SECOND_ORDER: 'ثاني طلب Supply', SUPPLY_THIRD_ORDER: 'ثالث طلب Supply', LAB_LEAD: 'فرصة LAB', LAB_FIRST_CASE: 'أول حالة LAB', LAB_SECOND_CASE: 'ثاني حالة LAB', LAB_THIRD_CASE: 'ثالث حالة LAB', RECURRING_LAB_DOCTOR: 'طبيب LAB متكرر', IMDAD_SUBSCRIBER: 'اشتراك IMDAD', FIELD_VISIT: 'زيارة ميدانية' };
+const ST = { Pending: 'قيد المراجعة', Approved: 'معتمد', Rejected: 'مرفوض' };
+
+function bar(v, t) {
+  const p = t ? Math.min(100, Math.round(v / t * 100)) : 0;
+  return '<div style="background:#e7edf1;border-radius:8px;height:9px;margin:8px 0 0"><div style="width:' + p + '%;background:var(--teal);height:9px;border-radius:8px"></div></div>';
+}
+function loadMine() {
+  call('flowMyMonth', [session, $('myMonth').value], d => {
+    const c = d.commissions;
+    let h = '<div class="row" style="margin-top:14px">' + metric('رصيد النقاط الكلي', d.points.balance) + metric('نقاط هذا الشهر', d.points.month) +
+      metric('عمولات معتمدة', c.approved) + metric('عمولات قيد الاعتماد', c.pending) + '</div>' +
+      '<p>العمولات المعتمدة حسب المسار — Supply: ' + safe(c.byPath.Supply) + ' · LAB: ' + safe(c.byPath.LAB) + ' · IMDAD: ' + safe(c.byPath.IMDAD) + '</p>' +
+      '<h3>أهداف الشهر</h3><div class="row">' + d.goals.map(g => '<div class="metric">' + safe(g.label) + '<b>' + (g.value == null ? '—' : safe(g.value)) + ' / ' + safe(g.target) + '</b>' + (g.value == null ? '' : bar(g.value, g.target)) + '</div>').join('') + '</div>' +
+      '<h3>مواعيد المتابعة</h3>';
+    h += d.followUps.length
+      ? '<div class="scroll">' + table([['الموعد', 'date'], ['العميل', 'name'], ['النشاط', 'type'], ['', 'state']], d.followUps.map(f => ({ date: f.date, name: f.name, type: TL[f.type] || f.type, state: f.overdue ? 'متأخر' : '' }))) + '</div>'
+      : '<p>لا توجد مواعيد متابعة لهذا الشهر.</p>';
+    h += '<p>أنشطة بانتظار الاعتماد: ' + safe(d.pendingActivities) + ' · أنشطة معتمدة هذا الشهر: ' + safe(d.activities.approved) + '</p>';
+    $('mineBody').innerHTML = h;
+  });
+}
+
 function customers() {
   call('dw08Customers', [session, $('search').value], r => {
-    $('customerTable').innerHTML = table([['المعرف','id'],['الاسم','name'],['النوع','type'],['الهاتف','phone'],['المنطقة','area']], r);
+    rows = r;
+    $('customerTable').innerHTML = '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
+      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button onclick="openCustomer(' + i + ')">فتح</button></td></tr>').join('') + '</tbody></table>';
   });
 }
+
+function openCustomer(i) {
+  const id = typeof i === 'number' ? rows[i].id : i;
+  call('flowGetCustomer', [session, id], renderCustomer);
+}
+
+function renderCustomer(d) {
+  cur = d.customer.id; curData = d;
+  const c = d.customer, P = { SUPPLY: 'Supply', LAB: 'LAB', IMDAD: 'IMDAD' };
+  let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p>' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p><h3>حالة العميل</h3>';
+  Object.keys(P).forEach(p => {
+    h += '<label>' + P[p] + '</label><div class="row"><select id="st-' + p + '">' +
+      d.options[p].map(o => '<option' + (o === d.statuses[p] ? ' selected' : '') + '>' + safe(o) + '</option>').join('') +
+      '</select><button onclick="saveStatus(\'' + p + '\')">حفظ</button></div>';
+  });
+  h += '<p>تغيير الحالة لا يمنح نقاطاً. النقاط تُمنح فقط عند تسجيل النشاط واعتماده من الإدارة.</p>';
+  if (d.canLog) {
+    const open = d.activities.filter(a => a.unlocked && !a.logged), shut = d.activities.filter(a => !(a.unlocked && !a.logged));
+    h += '<h3>تسجيل نشاط</h3>';
+    if (!open.length) h += '<p>لا توجد أنشطة متاحة حالياً.</p>';
+    else h += '<label>النشاط</label><select id="actType">' + open.map(a => '<option value="' + safe(a.code) + '">' + safe(a.label) + ' (+' + a.points + ')</option>').join('') + '</select>' +
+      '<label>تاريخ النشاط</label><input type="date" id="actDate" value="' + today() + '" max="' + today() + '">' +
+      '<label>قناة التواصل (للتواصل والزيارة والفرص)</label><select id="actChannel"><option>WhatsApp</option><option>اتصال هاتفي</option><option>زيارة ميدانية</option><option>أخرى</option></select>' +
+      '<label>رقم الطلب أو مرجع الإثبات (إلزامي للطلبات والحالات والاشتراك)</label><input id="actRef">' +
+      '<label>ملاحظات (إلزامية للزيارة والعميل المحتمل وفرصة LAB)</label><textarea id="actNotes"></textarea>' +
+      '<label>موعد المتابعة (اختياري، يظهر في مهامك)</label><input type="date" id="actNext" min="' + today() + '">' +
+      '<button onclick="logActivity()">إرسال للمراجعة</button>';
+    if (shut.length) h += '<p>غير متاح الآن: ' + shut.map(a => safe(a.label) + (a.logged ? ' (مسجّل)' : ' (يتطلب حالة أعلى)')).join('، ') + '</p>';
+  }
+  $('detail').innerHTML = h + '</div>';
+  $('detail').scrollIntoView({ behavior: 'smooth' });
+}
+
+function saveStatus(p) {
+  call('flowSetStatus', [session, cur, p, $('st-' + p).value], r => { alert(r.changed ? 'تم حفظ الحالة' : 'لا يوجد تغيير'); openCustomer(cur); });
+}
+
+function logActivity() {
+  const code = $('actType').value, a = curData.activities.find(x => x.code === code);
+  const p = { customerId: cur, activityType: code, channel: a.contact ? $('actChannel').value : '', activityDate: $('actDate').value, evidence: $('actRef').value, notes: $('actNotes').value, nextFollowUp: $('actNext').value };
+  call('flowCreateActivity', [session, p], r => { alert(r.message || 'تم تسجيل النشاط'); openCustomer(cur); });
+}
+
+function ncType() {
+  const doc = $('ncType').value === 'طبيب';
+  $('ncDoc').classList.toggle('hidden', !doc); $('ncStu').classList.toggle('hidden', doc);
+}
+
+function addCustomer() {
+  const p = { type: $('ncType').value, name: $('ncName').value, phone: $('ncPhone').value, clinicArea: $('ncArea').value, university: $('ncUni').value, studyYear: $('ncYear').value, notes: $('ncNotes').value };
+  call('addDentlyCustomer', [session, p], r => {
+    if (!r.success) return alert(r.message || 'تعذر التسجيل');
+    alert('تم تسجيل العميل');
+    ['ncName', 'ncPhone', 'ncArea', 'ncUni', 'ncYear', 'ncNotes'].forEach(k => $(k).value = '');
+    tab('customers'); openCustomer(r.customerId);
+  });
+}
+
 function activities() {
   call('dw08Activities', [session], r => {
-    $('activityTable').innerHTML = '<pre style="white-space:pre-wrap;overflow-wrap:anywhere">' + safe(JSON.stringify(r, null, 2)) + '</pre>';
+    $('activityTable').innerHTML = '<table><thead><tr><th>التاريخ</th><th>النشاط</th><th>العميل</th><th>الحالة</th><th>النقاط</th></tr></thead><tbody>' +
+      r.slice().reverse().map(x => '<tr><td>' + safe(x.activityDate) + '</td><td>' + safe(TL[x.activityType] || x.activityType) + '</td><td>' + safe(x.customerId) + '</td><td>' + safe(ST[x.status] || x.status) + (x.rejectionReason ? ' — ' + safe(x.rejectionReason) : '') + '</td><td>' + safe(x.proposedPoints) + '</td></tr>').join('') + '</tbody></table>';
   });
-}
-function saveActivity() {
-  const p = { customerId: $('customerId').value.trim(), activityType: $('activityType').value, channel: $('channel').value, activityDate: $('activityDate').value, notes: $('notes').value };
-  if (!p.customerId || !p.activityDate) return alert('معرف العميل والتاريخ مطلوبان');
-  call('dw08CreateActivity', [session, p], r => { alert(r.message || 'تم تسجيل النشاط'); tab('activities'); });
 }
 
 /* ---------- التهيئة ---------- */
