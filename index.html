@@ -3,65 +3,125 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#081220">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
 <title>DENTLY CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-:root{--navy:#081220;--teal:#00B8A9;--mint:#7EE6D1;--white:#F3F5F7;--muted:#A4B0BE}
+:root{--navy:#081220;--navy2:#0f2038;--teal:#00B8A9;--teal2:#009a8d;--mint:#7EE6D1;--paper:#F3F5F7;--steel:#A4B0BE;--ink:#0b1626;--mut:#5d6b7a;--line:#e2e8ee;--r:16px;--sh:0 1px 2px rgba(8,18,32,.06),0 10px 28px rgba(8,18,32,.07)}
 *{box-sizing:border-box}
-body{margin:0;background:#eef2f5;color:var(--navy);font:15px Tahoma,Arial,sans-serif}
-header{background:var(--navy);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between}
-header strong{font:700 27px Arial;letter-spacing:2px}
-header small{display:block;color:var(--mint);font-size:10px;letter-spacing:2px}
-.shell{max-width:1100px;margin:auto;padding:22px}
-.card{background:#fff;border-radius:17px;padding:22px;margin-bottom:16px;box-shadow:0 5px 24px #0812200c}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-input,select,textarea,button{font:inherit;border-radius:9px;padding:11px;border:1px solid #d5dfe5;min-width:0}
-input,select{flex:1}
-button{background:var(--teal);color:var(--navy);font-weight:bold;border:0;cursor:pointer}
-button.secondary{background:#e5f7f3}
-button:disabled{opacity:.5}
-nav{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
-nav button{background:#fff}
-nav button.active{background:var(--navy);color:#fff}
-h2{margin:0 0 14px}
-table{width:100%;border-collapse:collapse;text-align:right}
-th,td{padding:11px;border-bottom:1px solid #e7edf1}
-th{color:#627482;font-size:12px}
-#status{margin:10px 0;color:#345}
-#error{color:#a52235;white-space:pre-wrap;min-height:22px}
-#gbtn{display:flex;justify-content:center;min-height:44px;margin-top:18px}
-.metric{background:#f3f8f9;padding:15px;border-radius:12px;min-width:150px;flex:1}
-.metric b{display:block;font-size:23px;margin-top:8px}
-label{display:block;font-size:13px;margin:9px 0 5px}
-textarea{width:100%;min-height:85px}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.7 "IBM Plex Sans Arabic",system-ui,sans-serif}
 .hidden{display:none!important}
-.scroll{overflow-x:auto}
-@media(max-width:600px){.shell{padding:12px}.card{padding:15px}header{padding:14px}header strong{font-size:22px}}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* Brand */
+.brand{display:flex;align-items:center;gap:14px}
+.logo{display:block;height:46px;width:auto}
+.logo.lg{height:auto;width:min(340px,78vw)}
+.crm{padding:3px 10px;border-radius:8px;background:rgba(0,184,169,.2);color:var(--mint);font:700 11px Montserrat,sans-serif;letter-spacing:2px}
+
+/* Login */
+#login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;padding:28px 20px;color:#fff;
+  background:radial-gradient(720px 440px at 85% -8%,rgba(0,184,169,.34),transparent 62%),radial-gradient(620px 420px at -5% 108%,rgba(126,230,209,.15),transparent 60%),var(--navy)}
+body.in #login{display:none}
+.gate{width:100%;max-width:400px;padding:30px 26px;border-radius:22px;background:rgba(255,255,255,.06);border:1px solid rgba(164,176,190,.28);backdrop-filter:blur(8px)}
+.gate h1{margin:0 0 6px;font-size:26px;font-weight:700}
+.gate p{margin:0 0 6px;color:var(--steel);font-size:14px}
+.gate .lock{margin:18px 0 4px;padding:11px 14px;border-radius:12px;background:rgba(0,184,169,.12);color:var(--mint);font-size:13.5px}
+#gbtn{display:flex;justify-content:center;min-height:46px;margin-top:20px}
+#error{min-height:24px;margin:14px 0 0;text-align:center;font-size:14px;color:#ff9d92;white-space:pre-wrap}
+.foot{color:var(--steel);font:600 11px Montserrat,sans-serif;letter-spacing:2px;direction:ltr}
+
+/* Header + nav */
+body:not(.in) header{display:none}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;
+  background:radial-gradient(640px 220px at 12% -60%,rgba(0,184,169,.38),transparent 65%),var(--navy)}
+#identity{padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--paper);font-size:13.5px;font-weight:500;white-space:nowrap}
+nav{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;padding:0 14px;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none;padding:15px 16px;border:0;background:none;color:var(--mut);font-weight:600;cursor:pointer;border-bottom:3px solid transparent}
+nav button.active{color:var(--navy);border-bottom-color:var(--teal)}
+nav button.out{margin-inline-start:auto;color:#b4432f}
+.shell{max-width:1080px;margin:auto;padding:22px 16px 60px}
+
+/* Cards, forms, buttons */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:24px;margin-bottom:18px;box-shadow:var(--sh)}
+h2{display:flex;align-items:center;gap:10px;margin:0 0 16px;font-size:20px;font-weight:700}
+h2::before{content:"";width:6px;height:22px;border-radius:3px;background:var(--teal)}
+h3{margin:22px 0 10px;font-size:16px;font-weight:700}
+p{margin:6px 0}
+.note{color:var(--mut);font-size:13.5px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.f{display:flex;flex-direction:column;gap:6px}.f.full{grid-column:1/-1}
+label{font-size:13px;font-weight:600;color:var(--mut)}
+input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;min-width:0}
+input:focus,select:focus,textarea:focus{outline:0;border-color:var(--teal);box-shadow:0 0 0 4px rgba(0,184,169,.16)}
+textarea{min-height:90px;resize:vertical}
+.row>input,.row>select{flex:1}
+button.btn,.row>button,.f>button,.card>button{padding:12px 20px;border:0;border-radius:12px;background:var(--teal);color:var(--navy);font-weight:700;cursor:pointer;transition:background .15s,transform .05s}
+button.btn:hover,.row>button:hover,.f>button:hover,.card>button:hover{background:var(--mint)}
+button:active{transform:translateY(1px)}
+button.ghost{background:#e9f7f5!important;color:var(--teal2)!important}
+button:focus-visible,nav button:focus-visible{outline:3px solid rgba(0,184,169,.45);outline-offset:2px}
+#status{min-height:22px;margin:0 0 10px;color:var(--mut);font-size:13.5px}
+
+/* Metrics */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-top:14px}
+.metric{padding:16px 18px;border-radius:14px;background:var(--paper);border:1px solid var(--line);color:var(--mut);font-size:13.5px;font-weight:500}
+.metric b{display:block;margin-top:6px;font:800 26px/1.2 Montserrat,"IBM Plex Sans Arabic",sans-serif;color:var(--ink);direction:ltr;text-align:right}
+.metric.hero{background:linear-gradient(145deg,var(--navy),var(--navy2));border-color:transparent;color:var(--steel)}
+.metric.hero b{color:var(--mint)}
+.bar{height:8px;margin-top:10px;border-radius:8px;background:#dfe6ec;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--mint))}
+
+/* Tables */
+.scroll{overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;text-align:right;font-size:14px}
+th{padding:12px 14px;background:var(--paper);color:var(--mut);font-size:12.5px;font-weight:600;white-space:nowrap}
+td{padding:12px 14px;border-top:1px solid var(--line)}
+tbody tr:hover{background:#fafcfd}
+.tag{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12.5px;font-weight:600}
+.tag.ok{background:#dff6f2;color:#007a6f}.tag.wait{background:#fdf1d6;color:#8a5a00}.tag.no{background:#fde4e0;color:#b4382a}
+.path{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;margin-bottom:10px}
+.path b{font:700 13px Montserrat,sans-serif;letter-spacing:1px;color:var(--teal2);direction:ltr;text-align:right}
+@media(max-width:640px){.shell{padding:14px 10px 60px}.card{padding:18px 15px}.form{grid-template-columns:1fr}header{padding:13px 14px}.logo{height:38px}.path{grid-template-columns:1fr auto}.path b{grid-column:1/-1;text-align:right}}
 </style>
 </head>
 <body>
+
+<section id="login">
+  <img class="logo lg" src="assets/logo.png" alt="DENTLY — Smart Dental Supply">
+  <div class="gate">
+    <h1>تسجيل الدخول</h1>
+    <p>نظام إدارة علاقات العملاء وفريق المبيعات</p>
+    <div class="lock">الدخول مخصص للمسؤولين والمندوبات المعتمدين ضمن منظومة DENTLY.</div>
+    <div id="gbtn"></div>
+    <p id="error"></p>
+  </div>
+  <div class="foot">DENTLY CRM · AUTHORIZED ACCESS ONLY</div>
+</section>
+
 <header>
-  <div><strong>DENTLY</strong><small>SMART DENTAL SUPPLY · CRM</small></div>
+  <div class="brand"><img class="logo" src="assets/logo.png" alt="DENTLY"><span class="crm">CRM</span></div>
   <span id="identity"></span>
 </header>
 
-<main class="shell">
-  <section id="login" class="card">
-    <h2>تسجيل الدخول</h2>
-    <p>الدخول مخصص للمسؤولين والمندوبات المعتمدين ضمن منظومة DENTLY.</p>
-    <div id="gbtn"></div>
-    <p id="error"></p>
-  </section>
+<div id="app" class="hidden">
+  <nav>
+    <button onclick="tab('mine')" id="tab-mine">حسابي</button>
+    <button onclick="tab('overview')" id="tab-overview">الأداء</button>
+    <button onclick="tab('customers')" id="tab-customers">العملاء</button>
+    <button onclick="tab('newCustomer')" id="tab-newCustomer">عميل جديد</button>
+    <button onclick="tab('activities')" id="tab-activities">الأنشطة</button>
+    <button onclick="logout()" class="out">خروج</button>
+  </nav>
 
-  <section id="app" class="hidden">
-    <nav>
-      <button onclick="tab('mine')" id="tab-mine">حسابي</button>
-      <button onclick="tab('overview')" id="tab-overview">الأداء</button>
-      <button onclick="tab('customers')" id="tab-customers">العملاء</button>
-      <button onclick="tab('activities')" id="tab-activities">الأنشطة</button>
-      <button onclick="tab('newCustomer')" id="tab-newCustomer">عميل جديد</button>
-      <button onclick="logout()" class="secondary">خروج</button>
-    </nav>
+  <main class="shell">
     <p id="status"></p>
 
     <section id="mine" class="card view hidden">
@@ -76,64 +136,65 @@ textarea{width:100%;min-height:85px}
         <input type="month" id="month">
         <select id="rep" class="hidden"></select>
         <button onclick="loadPerformance()">عرض التقرير</button>
-        <button id="teamBtn" class="hidden secondary" onclick="team()">الفريق</button>
+        <button id="teamBtn" class="hidden ghost" onclick="team()">الفريق</button>
       </div>
-      <div id="metrics" class="row" style="margin-top:16px"></div>
+      <div id="metrics" class="tiles"></div>
     </section>
 
     <section id="customers" class="card view hidden">
       <h2>العملاء</h2>
       <div class="row">
-        <input id="search" placeholder="بحث بالاسم أو الهاتف أو المعرف">
+        <input id="search" placeholder="بحث بالاسم أو رقم الهاتف">
         <button onclick="customers()">بحث</button>
       </div>
       <div class="scroll" id="customerTable"></div>
     </section>
     <div id="detail"></div>
 
-    <section id="activities" class="card view hidden">
-      <h2>سجل الأنشطة</h2>
-      <button onclick="activities()">تحديث</button>
-      <div class="scroll" id="activityTable"></div>
-    </section>
-
     <section id="newCustomer" class="card view hidden">
       <h2>تسجيل عميل جديد</h2>
-      <label>النوع</label>
-      <select id="ncType" onchange="ncType()"><option>طبيب</option><option>طالب</option></select>
-      <label>الاسم الثلاثي</label><input id="ncName">
-      <label>رقم الهاتف (09xxxxxxxx)</label><input id="ncPhone" inputmode="numeric" maxlength="10">
-      <div id="ncDoc"><label>منطقة العيادة</label><input id="ncArea"></div>
-      <div id="ncStu" class="hidden"><label>الجامعة</label><input id="ncUni"><label>السنة الدراسية</label><input id="ncYear"></div>
-      <label>ملاحظات</label><textarea id="ncNotes"></textarea>
-      <button onclick="addCustomer()">تسجيل العميل</button>
+      <div class="form">
+        <div class="f"><label>نوع العميل</label><select id="ncType" onchange="ncType()"><option>طبيب</option><option>طالب</option></select></div>
+        <div class="f"><label>رقم الهاتف</label><input id="ncPhone" inputmode="numeric" maxlength="10" placeholder="09xxxxxxxx"></div>
+        <div class="f full"><label>الاسم الثلاثي</label><input id="ncName" placeholder="الاسم الكامل"></div>
+        <div class="f full" id="ncDoc"><label>منطقة العيادة</label><input id="ncArea" placeholder="المدينة / الحي"></div>
+        <div class="f hidden" id="ncStuU"><label>الجامعة</label><input id="ncUni"></div>
+        <div class="f hidden" id="ncStuY"><label>السنة الدراسية</label><input id="ncYear"></div>
+        <div class="f full"><label>ملاحظات</label><textarea id="ncNotes"></textarea></div>
+        <div class="f full"><button onclick="addCustomer()">تسجيل العميل</button></div>
+      </div>
+      <p class="note">يُنشأ رقم العميل وتاريخ التسجيل ونسبة العميل لك تلقائياً.</p>
     </section>
-  </section>
-</main>
+
+    <section id="activities" class="card view hidden">
+      <h2>سجل الأنشطة</h2>
+      <button class="btn ghost" onclick="activities()">تحديث</button>
+      <div class="scroll" id="activityTable"></div>
+    </section>
+  </main>
+</div>
 
 <script src="config.js"></script>
 <script>
-
 let session = sessionStorage.getItem('dently_session') || '', user = null;
+let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
 const safe = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const TL = { CONTACT: 'تواصل فعلي', POTENTIAL_LEAD: 'عميل محتمل', REGISTRATION: 'تسجيل التطبيق', SUPPLY_FIRST_ORDER: 'أول طلب Supply', SUPPLY_SECOND_ORDER: 'ثاني طلب Supply', SUPPLY_THIRD_ORDER: 'ثالث طلب Supply', LAB_LEAD: 'فرصة LAB', LAB_FIRST_CASE: 'أول حالة LAB', LAB_SECOND_CASE: 'ثاني حالة LAB', LAB_THIRD_CASE: 'ثالث حالة LAB', RECURRING_LAB_DOCTOR: 'طبيب LAB متكرر', IMDAD_SUBSCRIBER: 'اشتراك IMDAD', FIELD_VISIT: 'زيارة ميدانية' };
+const ST = { Pending: ['قيد المراجعة', 'wait'], Approved: ['معتمد', 'ok'], Rejected: ['مرفوض', 'no'] };
 
-/* ---------- الاتصال بالخادم (بديل google.script.run) ---------- */
+/* ---------- الاتصال بالخادم ---------- */
 async function rpc(fn, args) {
   const r = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ fn, args }) });
   const j = await r.json();
   if (!j.ok) throw new Error(j.error || 'خطأ غير معروف');
   return j.data;
 }
-
 function call(name, args, ok) {
   $('status').textContent = 'جارٍ التحميل...';
   rpc(name, args).then(x => { $('status').textContent = ''; ok(x); })
-    .catch(e => {
-      $('status').textContent = '';
-      if (/الجلسة/.test(e.message)) return logout(e.message);
-      alert(e.message);
-    });
+    .catch(e => { $('status').textContent = ''; if (/الجلسة/.test(e.message)) return logout(e.message); alert(e.message); });
 }
 
 /* ---------- الدخول والخروج ---------- */
@@ -141,47 +202,34 @@ async function onCredential(resp) {
   $('error').textContent = 'جارٍ التحقق…';
   try {
     const u = await rpc('login', [resp.credential]);
-    session = u.session;
-    sessionStorage.setItem('dently_session', session);
-    $('error').textContent = '';
-    start();
-  } catch (e) {
-    $('error').textContent = e.message || 'تعذر تسجيل الدخول.';
-  }
+    session = u.session; sessionStorage.setItem('dently_session', session);
+    $('error').textContent = ''; start();
+  } catch (e) { $('error').textContent = e.message || 'تعذر تسجيل الدخول.'; }
 }
-
 function start() {
-  rpc('dw08Bootstrap', [session]).then(r => {
+  rpc('flowBootstrap', [session]).then(r => {
     user = r.user;
-    $('login').classList.add('hidden');
-    $('app').classList.remove('hidden');
-    $('identity').textContent = user.role === 'ADMIN' ? 'الإدارة' : 'المندوبة ' + user.srId;
-    $('month').value = new Date().toISOString().slice(0, 7);
     const isAdmin = user.role === 'ADMIN';
-    $('rep').classList.toggle('hidden', !isAdmin);
-    $('teamBtn').classList.toggle('hidden', !isAdmin);
+    document.body.classList.add('in');
+    $('login').classList.add('hidden'); $('app').classList.remove('hidden');
+    $('identity').textContent = isAdmin ? 'الإدارة' : 'المندوبة · ' + (user.name || 'حسابي');
+    $('month').value = today().slice(0, 7); $('myMonth').value = today().slice(0, 7);
+    $('rep').classList.toggle('hidden', !isAdmin); $('teamBtn').classList.toggle('hidden', !isAdmin);
     $('tab-newCustomer').classList.toggle('hidden', isAdmin);
-    if (isAdmin) {
-      $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
-    }
-    $('tab-overview').classList.toggle('hidden', !isAdmin);
-    $('tab-mine').classList.toggle('hidden', isAdmin);
-    $('myMonth').value = today().slice(0, 7);
+    $('tab-overview').classList.toggle('hidden', !isAdmin); $('tab-mine').classList.toggle('hidden', isAdmin);
+    if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
     if (isAdmin) { tab('overview'); loadPerformance(); } else { tab('mine'); loadMine(); }
   }).catch(e => logout(e.message));
 }
-
 function logout(msg) {
   if (session) rpc('logout', [session]).catch(() => {});
-  session = ''; user = null;
-  sessionStorage.removeItem('dently_session');
-  $('app').classList.add('hidden');
-  $('login').classList.remove('hidden');
-  $('identity').textContent = '';
-  $('error').textContent = typeof msg === 'string' ? msg : '';
+  session = ''; user = null; sessionStorage.removeItem('dently_session');
+  document.body.classList.remove('in');
+  $('app').classList.add('hidden'); $('login').classList.remove('hidden');
+  $('identity').textContent = ''; $('error').textContent = typeof msg === 'string' ? msg : '';
 }
 
-/* ---------- الواجهة (كما هي من WebApp_08) ---------- */
+/* ---------- التنقل والمؤشرات ---------- */
 function tab(id) {
   document.querySelectorAll('.view').forEach(x => x.classList.add('hidden'));
   $(id).classList.remove('hidden');
@@ -191,103 +239,83 @@ function tab(id) {
   if (id === 'customers') customers();
   if (id === 'activities') activities();
 }
-function metric(name, value) { return '<div class="metric">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
+function metric(name, value, cls) { return '<div class="metric ' + (cls || '') + '">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
 function loadPerformance() {
   call('dw08Performance', [session, $('month').value, user.role === 'ADMIN' ? $('rep').value : ''], r => {
     $('metrics').innerHTML = metric('العملاء الجدد', r.newCustomers) + metric('الأنشطة المعتمدة', r.approvedActivities) +
-      metric('رصيد النقاط', r.currentPointsBalance) + metric('المبيعات المحصلة', r.revenue) +
+      metric('رصيد النقاط', r.currentPointsBalance, 'hero') + metric('المبيعات المحصلة', r.revenue) +
       metric('الربح الإجمالي', r.grossProfit) + metric('العمولات المعتمدة', r.approvedCommissions);
   });
 }
 function team() {
   call('dw08TeamPerformance', [session, $('month').value], r => {
-    $('metrics').innerHTML = (r.reps || []).map(x => '<div class="metric"><b>' + safe(x.name) + '</b>مبيعات: ' + safe(x.revenue) + '<p>عمولات: ' + safe(x.approvedCommissions) + '</p></div>').join('');
+    $('metrics').innerHTML = (r.reps || []).map(x => '<div class="metric">' + safe(x.name) + '<b>' + safe(x.revenue) + '</b>عمولات: ' + safe(x.approvedCommissions) + '</div>').join('');
   });
 }
 function table(headers, rows) {
   return '<table><thead><tr>' + headers.map(x => '<th>' + safe(x[0]) + '</th>').join('') + '</tr></thead><tbody>' +
     rows.map(r => '<tr>' + headers.map(x => '<td>' + safe(r[x[1]]) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
 }
-let cur = '', curData = null, rows = [];
-const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-const TL = { CONTACT: 'تواصل فعلي', POTENTIAL_LEAD: 'عميل محتمل', REGISTRATION: 'تسجيل التطبيق', SUPPLY_FIRST_ORDER: 'أول طلب Supply', SUPPLY_SECOND_ORDER: 'ثاني طلب Supply', SUPPLY_THIRD_ORDER: 'ثالث طلب Supply', LAB_LEAD: 'فرصة LAB', LAB_FIRST_CASE: 'أول حالة LAB', LAB_SECOND_CASE: 'ثاني حالة LAB', LAB_THIRD_CASE: 'ثالث حالة LAB', RECURRING_LAB_DOCTOR: 'طبيب LAB متكرر', IMDAD_SUBSCRIBER: 'اشتراك IMDAD', FIELD_VISIT: 'زيارة ميدانية' };
-const ST = { Pending: 'قيد المراجعة', Approved: 'معتمد', Rejected: 'مرفوض' };
-
-function bar(v, t) {
-  const p = t ? Math.min(100, Math.round(v / t * 100)) : 0;
-  return '<div style="background:#e7edf1;border-radius:8px;height:9px;margin:8px 0 0"><div style="width:' + p + '%;background:var(--teal);height:9px;border-radius:8px"></div></div>';
-}
+function bar(v, t) { return '<div class="bar"><i style="width:' + (t ? Math.min(100, Math.round(v / t * 100)) : 0) + '%"></i></div>'; }
 function loadMine() {
   call('flowMyMonth', [session, $('myMonth').value], d => {
     const c = d.commissions;
-    let h = '<div class="row" style="margin-top:14px">' + metric('رصيد النقاط الكلي', d.points.balance) + metric('نقاط هذا الشهر', d.points.month) +
+    let h = '<div class="tiles">' + metric('رصيد النقاط الكلي', d.points.balance, 'hero') + metric('نقاط هذا الشهر', d.points.month) +
       metric('عمولات معتمدة', c.approved) + metric('عمولات قيد الاعتماد', c.pending) + '</div>' +
-      '<p>العمولات المعتمدة حسب المسار — Supply: ' + safe(c.byPath.Supply) + ' · LAB: ' + safe(c.byPath.LAB) + ' · IMDAD: ' + safe(c.byPath.IMDAD) + '</p>' +
-      '<h3>أهداف الشهر</h3><div class="row">' + d.goals.map(g => '<div class="metric">' + safe(g.label) + '<b>' + (g.value == null ? '—' : safe(g.value)) + ' / ' + safe(g.target) + '</b>' + (g.value == null ? '' : bar(g.value, g.target)) + '</div>').join('') + '</div>' +
+      '<p class="note">العمولات المعتمدة حسب المسار — Supply: ' + safe(c.byPath.Supply) + ' · LAB: ' + safe(c.byPath.LAB) + ' · IMDAD: ' + safe(c.byPath.IMDAD) + '</p>' +
+      '<h3>أهداف الشهر</h3><div class="tiles">' + d.goals.map(g => '<div class="metric">' + safe(g.label) + '<b>' + (g.value == null ? '—' : safe(g.value)) + ' / ' + safe(g.target) + '</b>' + (g.value == null ? '' : bar(g.value, g.target)) + '</div>').join('') + '</div>' +
       '<h3>مواعيد المتابعة</h3>';
     h += d.followUps.length
-      ? '<div class="scroll">' + table([['الموعد', 'date'], ['العميل', 'name'], ['النشاط', 'type'], ['', 'state']], d.followUps.map(f => ({ date: f.date, name: f.name, type: TL[f.type] || f.type, state: f.overdue ? 'متأخر' : '' }))) + '</div>'
-      : '<p>لا توجد مواعيد متابعة لهذا الشهر.</p>';
-    h += '<p>أنشطة بانتظار الاعتماد: ' + safe(d.pendingActivities) + ' · أنشطة معتمدة هذا الشهر: ' + safe(d.activities.approved) + '</p>';
+      ? '<div class="scroll"><table><thead><tr><th>الموعد</th><th>العميل</th><th>النشاط</th><th></th></tr></thead><tbody>' + d.followUps.map(f => '<tr><td>' + safe(f.date) + '</td><td>' + safe(f.name) + '</td><td>' + safe(TL[f.type] || f.type) + '</td><td>' + (f.overdue ? '<span class="tag no">متأخر</span>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<p class="note">لا توجد مواعيد متابعة لهذا الشهر.</p>';
+    h += '<p class="note">أنشطة بانتظار الاعتماد: ' + safe(d.pendingActivities) + ' · أنشطة معتمدة هذا الشهر: ' + safe(d.activities.approved) + '</p>';
     $('mineBody').innerHTML = h;
   });
 }
 
+/* ---------- العملاء ---------- */
 function customers() {
   call('dw08Customers', [session, $('search').value], r => {
     rows = r;
     $('customerTable').innerHTML = '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
-      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button onclick="openCustomer(' + i + ')">فتح</button></td></tr>').join('') + '</tbody></table>';
+      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">فتح</button></td></tr>').join('') + '</tbody></table>';
   });
 }
-
-function openCustomer(i) {
-  const id = typeof i === 'number' ? rows[i].id : i;
-  call('flowGetCustomer', [session, id], renderCustomer);
-}
-
+function openCustomer(i) { call('flowGetCustomer', [session, typeof i === 'number' ? rows[i].id : i], renderCustomer); }
 function renderCustomer(d) {
   cur = d.customer.id; curData = d;
-  const c = d.customer, P = { SUPPLY: 'Supply', LAB: 'LAB', IMDAD: 'IMDAD' };
-  let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p>' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p><h3>حالة العميل</h3>';
+  const c = d.customer, P = { SUPPLY: 'SUPPLY', LAB: 'LAB', IMDAD: 'IMDAD' };
+  let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p class="note">' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p><h3>حالة العميل</h3>';
   Object.keys(P).forEach(p => {
-    h += '<label>' + P[p] + '</label><div class="row"><select id="st-' + p + '">' +
-      d.options[p].map(o => '<option' + (o === d.statuses[p] ? ' selected' : '') + '>' + safe(o) + '</option>').join('') +
-      '</select><button onclick="saveStatus(\'' + p + '\')">حفظ</button></div>';
+    h += '<div class="path"><b>' + P[p] + '</b><select id="st-' + p + '">' + d.options[p].map(o => '<option' + (o === d.statuses[p] ? ' selected' : '') + '>' + safe(o) + '</option>').join('') + '</select><button class="btn" onclick="saveStatus(\'' + p + '\')">حفظ</button></div>';
   });
-  h += '<p>تغيير الحالة لا يمنح نقاطاً. النقاط تُمنح فقط عند تسجيل النشاط واعتماده من الإدارة.</p>';
+  h += '<p class="note">تغيير الحالة لا يمنح نقاطاً. النقاط تُمنح عند تسجيل النشاط واعتماده من الإدارة.</p>';
   if (d.canLog) {
     const open = d.activities.filter(a => a.unlocked && !a.logged), shut = d.activities.filter(a => !(a.unlocked && !a.logged));
     h += '<h3>تسجيل نشاط</h3>';
-    if (!open.length) h += '<p>لا توجد أنشطة متاحة حالياً.</p>';
-    else h += '<label>النشاط</label><select id="actType">' + open.map(a => '<option value="' + safe(a.code) + '">' + safe(a.label) + ' (+' + a.points + ')</option>').join('') + '</select>' +
-      '<label>تاريخ النشاط</label><input type="date" id="actDate" value="' + today() + '" max="' + today() + '">' +
-      '<label>قناة التواصل (للتواصل والزيارة والفرص)</label><select id="actChannel"><option>WhatsApp</option><option>اتصال هاتفي</option><option>زيارة ميدانية</option><option>أخرى</option></select>' +
-      '<label>رقم الطلب أو مرجع الإثبات (إلزامي للطلبات والحالات والاشتراك)</label><input id="actRef">' +
-      '<label>ملاحظات (إلزامية للزيارة والعميل المحتمل وفرصة LAB)</label><textarea id="actNotes"></textarea>' +
-      '<label>موعد المتابعة (اختياري، يظهر في مهامك)</label><input type="date" id="actNext" min="' + today() + '">' +
-      '<button onclick="logActivity()">إرسال للمراجعة</button>';
-    if (shut.length) h += '<p>غير متاح الآن: ' + shut.map(a => safe(a.label) + (a.logged ? ' (مسجّل)' : ' (يتطلب حالة أعلى)')).join('، ') + '</p>';
+    if (!open.length) h += '<p class="note">لا توجد أنشطة متاحة حالياً.</p>';
+    else h += '<div class="form"><div class="f full"><label>النشاط</label><select id="actType">' + open.map(a => '<option value="' + safe(a.code) + '">' + safe(a.label) + ' (+' + a.points + ')</option>').join('') + '</select></div>' +
+      '<div class="f"><label>تاريخ النشاط</label><input type="date" id="actDate" value="' + today() + '" max="' + today() + '"></div>' +
+      '<div class="f"><label>قناة التواصل</label><select id="actChannel"><option>WhatsApp</option><option>اتصال هاتفي</option><option>زيارة ميدانية</option><option>أخرى</option></select></div>' +
+      '<div class="f"><label>رقم الطلب أو مرجع الإثبات</label><input id="actRef" placeholder="إلزامي للطلبات والحالات والاشتراك"></div>' +
+      '<div class="f"><label>موعد المتابعة (اختياري)</label><input type="date" id="actNext" min="' + today() + '"></div>' +
+      '<div class="f full"><label>ملاحظات</label><textarea id="actNotes" placeholder="إلزامية للزيارة والعميل المحتمل وفرصة LAB"></textarea></div>' +
+      '<div class="f full"><button onclick="logActivity()">إرسال للمراجعة</button></div></div>';
+    if (shut.length) h += '<p class="note">غير متاح الآن: ' + shut.map(a => safe(a.label) + (a.logged ? ' (مسجّل)' : ' (يتطلب حالة أعلى)')).join('، ') + '</p>';
   }
   $('detail').innerHTML = h + '</div>';
   $('detail').scrollIntoView({ behavior: 'smooth' });
 }
-
-function saveStatus(p) {
-  call('flowSetStatus', [session, cur, p, $('st-' + p).value], r => { alert(r.changed ? 'تم حفظ الحالة' : 'لا يوجد تغيير'); openCustomer(cur); });
-}
-
+function saveStatus(p) { call('flowSetStatus', [session, cur, p, $('st-' + p).value], r => { alert(r.changed ? 'تم حفظ الحالة' : 'لا يوجد تغيير'); openCustomer(cur); }); }
 function logActivity() {
   const code = $('actType').value, a = curData.activities.find(x => x.code === code);
   const p = { customerId: cur, activityType: code, channel: a.contact ? $('actChannel').value : '', activityDate: $('actDate').value, evidence: $('actRef').value, notes: $('actNotes').value, nextFollowUp: $('actNext').value };
   call('flowCreateActivity', [session, p], r => { alert(r.message || 'تم تسجيل النشاط'); openCustomer(cur); });
 }
-
 function ncType() {
   const doc = $('ncType').value === 'طبيب';
-  $('ncDoc').classList.toggle('hidden', !doc); $('ncStu').classList.toggle('hidden', doc);
+  $('ncDoc').classList.toggle('hidden', !doc); $('ncStuU').classList.toggle('hidden', doc); $('ncStuY').classList.toggle('hidden', doc);
 }
-
 function addCustomer() {
   const p = { type: $('ncType').value, name: $('ncName').value, phone: $('ncPhone').value, clinicArea: $('ncArea').value, university: $('ncUni').value, studyYear: $('ncYear').value, notes: $('ncNotes').value };
   call('addDentlyCustomer', [session, p], r => {
@@ -298,10 +326,11 @@ function addCustomer() {
   });
 }
 
+/* ---------- الأنشطة ---------- */
 function activities() {
-  call('dw08Activities', [session], r => {
+  call('flowActivities', [session], r => {
     $('activityTable').innerHTML = '<table><thead><tr><th>التاريخ</th><th>النشاط</th><th>العميل</th><th>الحالة</th><th>النقاط</th></tr></thead><tbody>' +
-      r.slice().reverse().map(x => '<tr><td>' + safe(x.activityDate) + '</td><td>' + safe(TL[x.activityType] || x.activityType) + '</td><td>' + safe(x.customerId) + '</td><td>' + safe(ST[x.status] || x.status) + (x.rejectionReason ? ' — ' + safe(x.rejectionReason) : '') + '</td><td>' + safe(x.proposedPoints) + '</td></tr>').join('') + '</tbody></table>';
+      r.slice().reverse().map(x => { const s = ST[x.status] || [x.status, '']; return '<tr><td>' + safe(x.activityDate) + '</td><td>' + safe(TL[x.activityType] || x.activityType) + '</td><td>' + safe(x.customerName) + '</td><td><span class="tag ' + s[1] + '">' + safe(s[0]) + '</span>' + (x.rejectionReason ? ' ' + safe(x.rejectionReason) : '') + '</td><td>' + safe(x.proposedPoints) + '</td></tr>'; }).join('') + '</tbody></table>';
   });
 }
 
@@ -312,7 +341,7 @@ window.addEventListener('load', () => {
     if (!window.google || !google.accounts) return;
     clearInterval(wait);
     google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onCredential });
-    google.accounts.id.renderButton($('gbtn'), { theme: 'outline', size: 'large', text: 'continue_with', locale: 'ar', width: 280 });
+    google.accounts.id.renderButton($('gbtn'), { theme: 'filled_black', size: 'large', text: 'continue_with', locale: 'ar', width: 300 });
   }, 100);
 });
 </script>
