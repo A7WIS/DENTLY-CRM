@@ -41,7 +41,7 @@ body.in #login{display:none}
 body:not(.in) header{display:none}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;
   background:radial-gradient(640px 220px at 12% -60%,rgba(0,184,169,.38),transparent 65%),var(--navy)}
-#identity{padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--paper);font-size:13.5px;font-weight:500;white-space:nowrap}
+#identity{max-width:55vw;overflow:hidden;text-overflow:ellipsis;padding:7px 14px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--paper);font-size:13.5px;font-weight:500;white-space:nowrap}
 nav{position:sticky;top:0;z-index:5;display:flex;gap:4px;overflow-x:auto;padding:0 14px;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
 nav button{flex:none;padding:15px 16px;border:0;background:none;color:var(--mut);font-weight:600;cursor:pointer;border-bottom:3px solid transparent}
@@ -113,7 +113,11 @@ tbody tr:hover{background:#fafcfd}
 
 <div id="app" class="hidden">
   <nav>
+    <button onclick="tab('review')" id="tab-review">المراجعة</button>
+    <button onclick="tab('reps')" id="tab-reps">الرتب</button>
     <button onclick="tab('mine')" id="tab-mine">حسابي</button>
+    <button onclick="tab('tasks')" id="tab-tasks">مهامي</button>
+    <button onclick="tab('logAct')" id="tab-logAct">تسجيل نشاط</button>
     <button onclick="tab('overview')" id="tab-overview">الأداء</button>
     <button onclick="tab('customers')" id="tab-customers">العملاء</button>
     <button onclick="tab('newCustomer')" id="tab-newCustomer">عميل جديد</button>
@@ -124,9 +128,35 @@ tbody tr:hover{background:#fafcfd}
   <main class="shell">
     <p id="status"></p>
 
+    <section id="review" class="card view hidden">
+      <h2>مراجعة الأنشطة</h2>
+      <button class="btn ghost" onclick="loadReview()">تحديث</button>
+      <div id="reviewBody"></div>
+    </section>
+
+    <section id="reps" class="card view hidden">
+      <h2>رتب المندوبات</h2>
+      <div id="repsBody"></div>
+      <p class="note">كل مندوبة بلا قرار رتبة تُعدّ «مندوبة ثانية». كل تغيير يُحفظ في سجل تاريخي ولا يغيّر الصلاحيات.</p>
+    </section>
+
+    <section id="tasks" class="card view hidden">
+      <h2>مهامي هذا الأسبوع</h2>
+      <div id="tasksBody"></div>
+    </section>
+
+    <section id="logAct" class="card view hidden">
+      <h2>تسجيل نشاط</h2>
+      <div class="form">
+        <div class="f full"><label>اختر العميل</label><select id="laCust"></select></div>
+        <div class="f full"><button onclick="openLa()">متابعة</button></div>
+      </div>
+      <p class="note">لتسجيل عميل جديد استخدمي تبويب «عميل جديد».</p>
+    </section>
+
     <section id="mine" class="card view hidden">
       <h2>حسابي هذا الشهر</h2>
-      <div class="row"><input type="month" id="myMonth"><button onclick="loadMine()">عرض</button></div>
+      <div class="row"><input type="month" id="myMonth"><button onclick="loadMine()">عرض</button><button class="ghost" onclick="tab('tasks')">مهامي هذا الأسبوع</button></div>
       <div id="mineBody"></div>
     </section>
 
@@ -168,7 +198,7 @@ tbody tr:hover{background:#fafcfd}
 
     <section id="activities" class="card view hidden">
       <h2>سجل الأنشطة</h2>
-      <button class="btn ghost" onclick="activities()">تحديث</button>
+      <div class="row"><button id="goLog" onclick="tab('logAct')">+ تسجيل نشاط جديد</button><button class="ghost" onclick="activities()">تحديث</button></div>
       <div class="scroll" id="activityTable"></div>
     </section>
   </main>
@@ -181,7 +211,7 @@ let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
 const safe = x => String(x ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-const TL = { CONTACT: 'تواصل فعلي', POTENTIAL_LEAD: 'عميل محتمل', REGISTRATION: 'تسجيل التطبيق', SUPPLY_FIRST_ORDER: 'أول طلب Supply', SUPPLY_SECOND_ORDER: 'ثاني طلب Supply', SUPPLY_THIRD_ORDER: 'ثالث طلب Supply', LAB_LEAD: 'فرصة LAB', LAB_FIRST_CASE: 'أول حالة LAB', LAB_SECOND_CASE: 'ثاني حالة LAB', LAB_THIRD_CASE: 'ثالث حالة LAB', RECURRING_LAB_DOCTOR: 'طبيب LAB متكرر', IMDAD_SUBSCRIBER: 'اشتراك IMDAD', FIELD_VISIT: 'زيارة ميدانية' };
+const TL = { CONTACT: 'تواصل فعلي', POTENTIAL_LEAD: 'عميل محتمل', REGISTRATION: 'تسجيل التطبيق', SUPPLY_FIRST_ORDER: 'أول طلب Supply', SUPPLY_SECOND_ORDER: 'ثاني طلب Supply', SUPPLY_THIRD_ORDER: 'ثالث طلب Supply', LAB_LEAD: 'فرصة LAB', LAB_FIRST_CASE: 'أول حالة LAB', LAB_SECOND_CASE: 'ثاني حالة LAB', LAB_THIRD_CASE: 'ثالث حالة LAB', RECURRING_LAB_DOCTOR: 'طبيب LAB متكرر', IMDAD_SUBSCRIBER: 'اشتراك IMDAD', FIELD_VISIT: 'زيارة ميدانية', CONTACT_ATTEMPT: 'محاولة تواصل (بدون رد)', FOLLOW_UP: 'متابعة' };
 const ST = { Pending: ['قيد المراجعة', 'wait'], Approved: ['معتمد', 'ok'], Rejected: ['مرفوض', 'no'] };
 
 /* ---------- الاتصال بالخادم ---------- */
@@ -212,13 +242,14 @@ function start() {
     const isAdmin = user.role === 'ADMIN';
     document.body.classList.add('in');
     $('login').classList.add('hidden'); $('app').classList.remove('hidden');
-    $('identity').textContent = isAdmin ? 'الإدارة' : 'المندوبة · ' + (user.name || 'حسابي');
+    $('identity').textContent = isAdmin ? 'الإدارة' : 'المندوبة · ' + (user.name || 'حسابي') + (user.rank ? ' · ' + user.rank : '');
     $('month').value = today().slice(0, 7); $('myMonth').value = today().slice(0, 7);
     $('rep').classList.toggle('hidden', !isAdmin); $('teamBtn').classList.toggle('hidden', !isAdmin);
     $('tab-newCustomer').classList.toggle('hidden', isAdmin);
     $('tab-overview').classList.toggle('hidden', !isAdmin); $('tab-mine').classList.toggle('hidden', isAdmin);
-    if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.id) + '</option>').join('');
-    if (isAdmin) { tab('overview'); loadPerformance(); } else { tab('mine'); loadMine(); }
+    if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
+    $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
+    tab(isAdmin ? 'review' : 'mine');
   }).catch(e => logout(e.message));
 }
 function logout(msg) {
@@ -235,9 +266,15 @@ function tab(id) {
   $(id).classList.remove('hidden');
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
   $('tab-' + id).classList.add('active');
-  if (id !== 'customers') $('detail').innerHTML = '';
+  $('detail').innerHTML = '';
   if (id === 'customers') customers();
   if (id === 'activities') activities();
+  if (id === 'review') loadReview();
+  if (id === 'logAct') loadLa();
+  if (id === 'mine') loadMine();
+  if (id === 'tasks') loadTasks();
+  if (id === 'reps') loadReps();
+  if (id === 'overview') loadPerformance();
 }
 function metric(name, value, cls) { return '<div class="metric ' + (cls || '') + '">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
 function loadPerformance() {
@@ -278,7 +315,7 @@ function customers() {
   call('dw08Customers', [session, $('search').value], r => {
     rows = r;
     $('customerTable').innerHTML = '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
-      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">فتح</button></td></tr>').join('') + '</tbody></table>';
+      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">الحالة والنشاط</button></td></tr>').join('') + '</tbody></table>';
   });
 }
 function openCustomer(i) { call('flowGetCustomer', [session, typeof i === 'number' ? rows[i].id : i], renderCustomer); }
@@ -324,6 +361,79 @@ function addCustomer() {
     ['ncName', 'ncPhone', 'ncArea', 'ncUni', 'ncYear', 'ncNotes'].forEach(k => $(k).value = '');
     tab('customers'); openCustomer(r.customerId);
   });
+}
+
+/* ---------- مراجعة الإدارة ---------- */
+let rv = [];
+function loadReview() {
+  call('flowReviewList', [session], r => {
+    rv = r;
+    $('tab-review').textContent = 'المراجعة' + (r.length ? ' (' + r.length + ')' : '');
+    $('reviewBody').innerHTML = r.length
+      ? '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>العميل</th><th>النشاط</th><th>نقاط</th><th>التفاصيل</th><th></th></tr></thead><tbody>' +
+        r.map((x, i) => '<tr><td>' + safe(x.repName) + '</td><td>' + safe(x.customerName) + '</td><td>' + safe(TL[x.type] || x.type) + '<br><span class="note">' + safe(x.date) + '</span></td><td>' + safe(x.points) + '</td><td>' + safe([x.channel, x.evidence, x.notes].filter(Boolean).join(' · ')) + '</td><td style="white-space:nowrap"><button class="btn" onclick="reviewAct(' + i + ',\'approve\')">' + (x.state === 'NeedsPosting' ? 'إضافة النقاط' : 'اعتماد') + '</button> ' + (x.state === 'Pending' ? '<button class="btn ghost" onclick="reviewAct(' + i + ',\'reject\')">رفض</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<p class="note">لا توجد أنشطة بانتظار المراجعة.</p>';
+  });
+}
+function reviewAct(i, decision) {
+  const x = rv[i]; let why = '';
+  if (decision === 'reject') { why = prompt('سبب الرفض (إلزامي):') || ''; if (why.trim().length < 3) return; }
+  else if (!confirm('اعتماد «' + (TL[x.type] || x.type) + '» للمندوبة ' + x.repName + '؟')) return;
+  call('flowReviewActivity', [session, x.id, decision, why], r => { alert(r.message || 'تم'); loadReview(); });
+}
+
+/* ---------- تسجيل نشاط (المندوبة) ---------- */
+function loadLa() {
+  call('dw08Customers', [session, ''], r => {
+    rows = r;
+    $('laCust').innerHTML = r.length ? r.map((x, i) => '<option value="' + i + '">' + safe(x.name) + ' — ' + safe(x.phone) + '</option>').join('') : '<option value="">لا يوجد عملاء بعد</option>';
+  });
+}
+function openLa() { const v = $('laCust').value; if (v === '') return alert('سجّلي عميلاً أولاً'); openCustomer(Number(v)); }
+
+/* ---------- مهامي الأسبوعية ---------- */
+let tkd = null, rpd = null;
+function loadTasks() {
+  call('flowMyTasks', [session], d => {
+    tkd = d;
+    const pc = t => t.target ? Math.min(1, t.done / t.target) : 1;
+    const pct = Math.round(Math.min.apply(null, d.cats.concat(d.org).map(pc)) * 100);
+    const btn = (code, label, dl) => '<button class="btn ghost" onclick="tickTask(\'' + code + '\',' + dl + ')">' + label + '</button>';
+    const card = (t, manual) => '<div class="metric">' + safe(t.label) + '<b>' + safe(t.done) + ' / ' + safe(t.target) + '</b>' + bar(t.done, t.target) +
+      (manual ? '<div class="row" style="margin-top:10px">' + (t.target === 1 ? (t.done ? btn(t.code, 'تراجع', -1) : btn(t.code, 'تمّت', 1)) : btn(t.code, '+1', 1) + btn(t.code, '−1', -1)) + '</div>' : '<span class="note">تُحتسب تلقائياً من أنشطتك</span>') + '</div>';
+    let h = '<p><span class="tag ok">' + safe(d.rank) + '</span> الأسبوع من ' + safe(d.weekStart) + ' إلى ' + safe(d.weekEnd) +
+      (d.onboarding ? ' <span class="tag wait">فترة تأهيل: نصف أهداف الأنشطة</span>' : '') + '</p>' +
+      '<div class="tiles">' + metric('إنجاز المهام الإجبارية (الأدنى بين البنود)', pct + '%', 'hero') + '</div>' +
+      '<p>' + (d.met ? '<span class="tag ok">مستوفية للحد الأدنى (90%) هذا الأسبوع</span>' : '<span class="tag wait">لم يُستوفَ الحد الأدنى (90%) بعد</span>') + '</p>' +
+      '<h3>أ. مهام إجبارية</h3><div class="tiles">' + d.cats.map(t => card(t, false)).join('') + d.org.map(t => card(t, true)).join('') + '</div>' +
+      '<h3>ب. مهام مالية</h3><div class="tiles">' + d.fin.map(f => '<div class="metric">' + safe(f.label) + '<div style="margin-top:8px">' +
+        (f.applicable ? (f.done ? '<span class="tag ok">تمّت</span> ' + btn(f.code, 'تراجع', -1) : '<span class="tag wait">مفتوحة</span> ' + btn(f.code, 'تمّت', 1)) : '<span class="tag wait">غير منطبقة هذا الأسبوع</span>') + '</div></div>').join('') + '</div>' +
+      '<h3>ج. اقتراحات من محفظتك</h3>';
+    const sg = d.suggestions;
+    h += sg.followUps.length ? '<p class="note">متابعات مستحقة هذا الأسبوع</p><div class="scroll"><table><thead><tr><th>الموعد</th><th>العميل</th></tr></thead><tbody>' + sg.followUps.map(x => '<tr><td>' + safe(x.date) + '</td><td>' + safe(x.name) + '</td></tr>').join('') + '</tbody></table></div>' : '';
+    h += sg.uncontacted.length ? '<p class="note">أطباء لم يُتواصل معهم بعد</p><div class="row">' + sg.uncontacted.map((x, i) => '<button class="btn ghost" onclick="openCustomer(tkd.suggestions.uncontacted[' + i + '].id)">' + safe(x.name) + '</button>').join('') + '</div>' : '';
+    if (d.lowPortfolio) h += '<p class="note">لا توجد محفظة كافية لاقتراح مهام. سجّلي أطباء جدداً من تبويب «عميل جديد».</p>';
+    $('tasksBody').innerHTML = h;
+  });
+}
+function tickTask(code, delta) { call('flowTaskTick', [session, code, delta], () => loadTasks()); }
+
+/* ---------- رتب المندوبات (الإدارة) ---------- */
+function loadReps() {
+  call('flowTeamRanks', [session], d => {
+    rpd = d;
+    $('repsBody').innerHTML = '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الرتبة الحالية</th><th>تعيين رتبة</th><th></th></tr></thead><tbody>' +
+      d.reps.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td><span class="tag ok">' + safe(x.rankName) + '</span></td><td><select id="rk-' + i + '">' +
+        d.ranks.map(r => '<option value="' + safe(r.code) + '"' + (r.code === x.rank ? ' selected' : '') + '>' + safe(r.name) + '</option>').join('') +
+        '</select></td><td><button class="btn" onclick="saveRank(' + i + ')">حفظ</button></td></tr>').join('') + '</tbody></table></div>';
+  });
+}
+function saveRank(i) {
+  const x = rpd.reps[i], code = $('rk-' + i).value;
+  if (code === x.rank) return alert('هذه هي الرتبة الحالية.');
+  const eff = prompt('تاريخ سريان القرار (YYYY-MM-DD):', today()); if (!eff) return;
+  const why = prompt('سبب القرار (إلزامي):') || ''; if (why.trim().length < 3) return;
+  call('flowSetRank', [session, x.id, code, eff.trim(), why], r => { alert(r.message || 'تم'); loadReps(); });
 }
 
 /* ---------- الأنشطة ---------- */
