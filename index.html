@@ -201,11 +201,13 @@ tbody tr:hover{background:#fafcfd}
       <div class="row"><button id="goLog" onclick="tab('logAct')">+ تسجيل نشاط جديد</button><button class="ghost" onclick="activities()">تحديث</button></div>
       <div class="scroll" id="activityTable"></div>
     </section>
+    <p class="note" id="ver" style="text-align:center;margin-top:28px"></p>
   </main>
 </div>
 
 <script src="config.js"></script>
 <script>
+const UI_VERSION = '1.6';
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -250,6 +252,7 @@ function start() {
     if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
     $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
     tab(isAdmin ? 'review' : 'mine');
+    fetch(API_URL).then(x => x.json()).then(j => { $('ver').textContent = 'الواجهة ' + UI_VERSION + ' · الخادم ' + (j.version || 'قديم'); }).catch(() => { $('ver').textContent = 'الواجهة ' + UI_VERSION; });
   }).catch(e => logout(e.message));
 }
 function logout(msg) {
@@ -312,10 +315,12 @@ function loadMine() {
 
 /* ---------- العملاء ---------- */
 function customers() {
-  call('dw08Customers', [session, $('search').value], r => {
-    rows = r;
-    $('customerTable').innerHTML = '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
-      r.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">الحالة والنشاط</button></td></tr>').join('') + '</tbody></table>';
+  call('flowMyCustomers', [session, $('search').value], r => {
+    rows = r.list;
+    $('customerTable').innerHTML = r.list.length
+      ? '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
+        r.list.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">الحالة والنشاط</button></td></tr>').join('') + '</tbody></table>'
+      : '<p class="note" style="padding:14px">' + safe(r.hint) + '</p>';
   });
 }
 function openCustomer(i) { call('flowGetCustomer', [session, typeof i === 'number' ? rows[i].id : i], renderCustomer); }
@@ -384,9 +389,9 @@ function reviewAct(i, decision) {
 
 /* ---------- تسجيل نشاط (المندوبة) ---------- */
 function loadLa() {
-  call('dw08Customers', [session, ''], r => {
-    rows = r;
-    $('laCust').innerHTML = r.length ? r.map((x, i) => '<option value="' + i + '">' + safe(x.name) + ' — ' + safe(x.phone) + '</option>').join('') : '<option value="">لا يوجد عملاء بعد</option>';
+  call('flowMyCustomers', [session, ''], r => {
+    rows = r.list;
+    $('laCust').innerHTML = r.list.length ? r.list.map((x, i) => '<option value="' + i + '">' + safe(x.name) + ' — ' + safe(x.phone) + '</option>').join('') : '<option value="">' + safe(r.hint) + '</option>';
   });
 }
 function openLa() { const v = $('laCust').value; if (v === '') return alert('سجّلي عميلاً أولاً'); openCustomer(Number(v)); }
