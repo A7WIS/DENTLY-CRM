@@ -90,6 +90,13 @@ tbody tr:hover{background:#fafcfd}
 .path{display:grid;grid-template-columns:90px 1fr auto;gap:10px;align-items:center;margin-bottom:10px}
 .path b{font:700 13px Montserrat,sans-serif;letter-spacing:1px;color:var(--teal2);direction:ltr;text-align:right}
 @media(max-width:640px){.shell{padding:14px 10px 60px}.card{padding:18px 15px}.form{grid-template-columns:1fr}header{padding:13px 14px}.logo{height:38px}.path{grid-template-columns:1fr auto}.path b{grid-column:1/-1;text-align:right}}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:999px;cursor:pointer;font-size:14px;font-weight:500;color:var(--ink);background:#fff}
+.chip input{width:auto;padding:0;margin:0;accent-color:var(--teal)}
+.chip:has(input:checked){border-color:var(--teal);background:#e9f7f5}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:14px;margin:12px 0}.kv dt{color:var(--mut);font-weight:600}.kv dd{margin:0}
+.state{display:inline-block;padding:6px 16px;border-radius:999px;background:var(--navy);color:var(--mint);font-weight:700}
+@media(max-width:640px){.kv{grid-template-columns:1fr}.kv dt{margin-top:6px}}
 </style>
 </head>
 <body>
@@ -117,7 +124,7 @@ tbody tr:hover{background:#fafcfd}
     <button onclick="tab('reps')" id="tab-reps">الرتب</button>
     <button onclick="tab('mine')" id="tab-mine">حسابي</button>
     <button onclick="tab('tasks')" id="tab-tasks">مهامي</button>
-    <button onclick="tab('logAct')" id="tab-logAct">تسجيل نشاط</button>
+    <button onclick="tab('logAct')" id="tab-logAct">تسجيل تواصل / زيارة</button>
     <button onclick="tab('overview')" id="tab-overview">الأداء</button>
     <button onclick="tab('customers')" id="tab-customers">العملاء</button>
     <button onclick="tab('newCustomer')" id="tab-newCustomer">عميل جديد</button>
@@ -146,9 +153,9 @@ tbody tr:hover{background:#fafcfd}
     </section>
 
     <section id="logAct" class="card view hidden">
-      <h2>تسجيل نشاط</h2>
+      <h2>تسجيل تواصل أو زيارة</h2>
       <div class="form">
-        <div class="f full"><label>اختر العميل</label><select id="laCust"></select></div>
+        <div class="f full"><label>اختر الطبيب</label><select id="laCust"></select></div>
         <div class="f full"><button onclick="openLa()">متابعة</button></div>
       </div>
       <p class="note">لتسجيل عميل جديد استخدمي تبويب «عميل جديد».</p>
@@ -202,12 +209,14 @@ tbody tr:hover{background:#fafcfd}
       <div class="scroll" id="activityTable"></div>
     </section>
     <p class="note" id="ver" style="text-align:center;margin-top:28px"></p>
+    <p style="text-align:center"><button class="btn ghost" onclick="diag()">فحص الحساب</button></p>
+    <div id="diagBody"></div>
   </main>
 </div>
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.6';
+const UI_VERSION = '1.7';
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -319,40 +328,80 @@ function customers() {
     rows = r.list;
     $('customerTable').innerHTML = r.list.length
       ? '<table><thead><tr><th>الاسم</th><th>النوع</th><th>الهاتف</th><th>المنطقة</th><th></th></tr></thead><tbody>' +
-        r.list.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">الحالة والنشاط</button></td></tr>').join('') + '</tbody></table>'
+        r.list.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.type) + '</td><td>' + safe(x.phone) + '</td><td>' + safe(x.area) + '</td><td><button class="btn ghost" onclick="openCustomer(' + i + ')">فتح</button></td></tr>').join('') + '</tbody></table>'
       : '<p class="note" style="padding:14px">' + safe(r.hint) + '</p>';
   });
 }
 function openCustomer(i) { call('flowGetCustomer', [session, typeof i === 'number' ? rows[i].id : i], renderCustomer); }
+const CH = [['WhatsApp', 'واتساب'], ['اتصال هاتفي', 'اتصال هاتفي'], ['انستغرام', 'انستغرام'], ['فيسبوك / ماسنجر', 'فيسبوك / ماسنجر'], ['تيليغرام', 'تيليغرام'], ['رسالة نصية', 'رسالة نصية'], ['أخرى', 'أخرى']];
+const TOPICS = [['SUPPLY', 'Supply'], ['LAB', 'LAB'], ['IMDAD', 'IMDAD'], ['NONE', 'لم يناقش'], ['ALL', 'كل المحاور نوقشت']];
+const RESULTS = [['APP_DOWNLOADED', 'حمل التطبيق'], ['INTERESTED', 'أبدى اهتماماً لكنه لم يحمل التطبيق'], ['NOT_INTERESTED', 'لم يهتم مطلقاً'], ['REFUSED', 'رفض الحوار أساساً']];
+const AXES = [['SUPPLY', 'Supply'], ['LAB', 'LAB'], ['IMDAD', 'IMDAD'], ['NONE', 'لم يهتم إطلاقاً']];
+const TRAITS = [['INTERACTIVE', 'متفاعل'], ['COLD', 'بارد'], ['FRIENDLY', 'ودود'], ['ARROGANT', 'متعجرف'], ['INDIFFERENT', 'غير مكترث']];
+
 function renderCustomer(d) {
   cur = d.customer.id; curData = d;
-  const c = d.customer, P = { SUPPLY: 'SUPPLY', LAB: 'LAB', IMDAD: 'IMDAD' };
-  let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p class="note">' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p><h3>حالة العميل</h3>';
-  Object.keys(P).forEach(p => {
-    h += '<div class="path"><b>' + P[p] + '</b><select id="st-' + p + '">' + d.options[p].map(o => '<option' + (o === d.statuses[p] ? ' selected' : '') + '>' + safe(o) + '</option>').join('') + '</select><button class="btn" onclick="saveStatus(\'' + p + '\')">حفظ</button></div>';
-  });
-  h += '<p class="note">تغيير الحالة لا يمنح نقاطاً. النقاط تُمنح عند تسجيل النشاط واعتماده من الإدارة.</p>';
-  if (d.canLog) {
-    const open = d.activities.filter(a => a.unlocked && !a.logged), shut = d.activities.filter(a => !(a.unlocked && !a.logged));
-    h += '<h3>تسجيل نشاط</h3>';
-    if (!open.length) h += '<p class="note">لا توجد أنشطة متاحة حالياً.</p>';
-    else h += '<div class="form"><div class="f full"><label>النشاط</label><select id="actType">' + open.map(a => '<option value="' + safe(a.code) + '">' + safe(a.label) + ' (+' + a.points + ')</option>').join('') + '</select></div>' +
-      '<div class="f"><label>تاريخ النشاط</label><input type="date" id="actDate" value="' + today() + '" max="' + today() + '"></div>' +
-      '<div class="f"><label>قناة التواصل</label><select id="actChannel"><option>WhatsApp</option><option>اتصال هاتفي</option><option>زيارة ميدانية</option><option>أخرى</option></select></div>' +
-      '<div class="f"><label>رقم الطلب أو مرجع الإثبات</label><input id="actRef" placeholder="إلزامي للطلبات والحالات والاشتراك"></div>' +
-      '<div class="f"><label>موعد المتابعة (اختياري)</label><input type="date" id="actNext" min="' + today() + '"></div>' +
-      '<div class="f full"><label>ملاحظات</label><textarea id="actNotes" placeholder="إلزامية للزيارة والعميل المحتمل وفرصة LAB"></textarea></div>' +
-      '<div class="f full"><button onclick="logActivity()">إرسال للمراجعة</button></div></div>';
-    if (shut.length) h += '<p class="note">غير متاح الآن: ' + shut.map(a => safe(a.label) + (a.logged ? ' (مسجّل)' : ' (يتطلب حالة أعلى)')).join('، ') + '</p>';
+  const c = d.customer, admin = user.role === 'ADMIN';
+  let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p class="note">' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p>' +
+    '<p>حالة الطبيب: <span class="state">' + safe(d.overall.label) + '</span>' + (d.overall.pending ? ' <span class="tag wait">تقرير بانتظار المراجعة</span>' : '') + '</p>' +
+    '<p class="note">تتحدّث الحالة تلقائياً بعد اعتماد تقارير التواصل والزيارات.</p>';
+  if (admin) {
+    h += '<h3>تصحيح الحالات (للإدارة)</h3>';
+    ['SUPPLY', 'LAB', 'IMDAD'].forEach(p => {
+      h += '<div class="path"><b>' + p + '</b><select id="st-' + p + '">' + d.options[p].map(o => '<option' + (o === d.statuses[p] ? ' selected' : '') + '>' + safe(o) + '</option>').join('') + '</select><button class="btn" onclick="saveStatus(\'' + p + '\')">حفظ</button></div>';
+    });
+  } else {
+    h += '<div class="row">' + ['SUPPLY', 'LAB', 'IMDAD'].map(p => '<span class="tag ok">' + p + ': ' + safe(d.statuses[p] || '—') + '</span>').join('') + '</div>';
   }
+  if (d.canLog) h += '<h3>تسجيل</h3><div class="row"><button onclick="openForm(\'contact\')">تسجيل تواصل</button><button class="ghost" onclick="openForm(\'visit\')">تسجيل زيارة ميدانية</button></div><div id="repForm"></div>';
   $('detail').innerHTML = h + '</div>';
   $('detail').scrollIntoView({ behavior: 'smooth' });
 }
 function saveStatus(p) { call('flowSetStatus', [session, cur, p, $('st-' + p).value], r => { alert(r.changed ? 'تم حفظ الحالة' : 'لا يوجد تغيير'); openCustomer(cur); }); }
-function logActivity() {
-  const code = $('actType').value, a = curData.activities.find(x => x.code === code);
-  const p = { customerId: cur, activityType: code, channel: a.contact ? $('actChannel').value : '', activityDate: $('actDate').value, evidence: $('actRef').value, notes: $('actNotes').value, nextFollowUp: $('actNext').value };
-  call('flowCreateActivity', [session, p], r => { alert(r.message || 'تم تسجيل النشاط'); openCustomer(cur); });
+
+const grp = (type, name, list) => '<div class="chips">' + list.map(x => '<label class="chip"><input type="' + type + '" name="' + name + '" value="' + x[0] + '"' + (type === 'checkbox' ? ' onchange="topicsChanged(this)"' : '') + '> ' + safe(x[1]) + '</label>').join('') + '</div>';
+const val = n => (document.querySelector('input[name="' + n + '"]:checked') || {}).value || '';
+const vals = n => Array.from(document.querySelectorAll('input[name="' + n + '"]:checked')).map(x => x.value);
+const nowHM = () => new Date().toTimeString().slice(0, 5);
+
+function topicsChanged(el) {
+  if (el.name !== 'topics') return;
+  document.querySelectorAll('input[name="topics"]').forEach(x => {
+    if (x === el) return;
+    if (el.checked && (el.value === 'NONE' || el.value === 'ALL')) x.checked = false;
+    if (el.checked && (x.value === 'NONE' || x.value === 'ALL')) x.checked = false;
+  });
+}
+function dayName() {
+  const v = $('rpDate').value; if (!v) return '';
+  $('rpDay').textContent = new Date(v + 'T12:00:00').toLocaleDateString('ar', { weekday: 'long' });
+}
+function openForm(kind) {
+  const visit = kind === 'visit';
+  const ta = (id, label) => '<div class="f full"><label>' + label + '</label><textarea id="' + id + '"></textarea></div>';
+  $('repForm').innerHTML = '<div class="card" style="margin-top:14px;background:var(--paper)"><h3 style="margin-top:0">' + (visit ? 'تقرير زيارة ميدانية' : 'تسجيل تواصل') + '</h3><div class="form">' +
+    (visit ? '' : '<div class="f"><label>طبيعة التواصل (القناة)</label><select id="rpChannel">' + CH.map(x => '<option value="' + safe(x[0]) + '">' + safe(x[1]) + '</option>').join('') + '</select></div>') +
+    '<div class="f"><label>' + (visit ? 'تاريخ الزيارة' : 'تاريخ التواصل') + ' <span id="rpDay" class="note"></span></label><input type="date" id="rpDate" value="' + today() + '" max="' + today() + '" onchange="dayName()"></div>' +
+    '<div class="f"><label>' + (visit ? 'ساعة الزيارة' : 'ساعة التواصل') + '</label><input type="time" id="rpTime" value="' + nowHM() + '"></div>' +
+    (visit ? '<div class="f"><label>مدة الزيارة (بالدقائق)</label><input type="number" id="rpDur" min="1" max="600" inputmode="numeric"></div>' : '') +
+    '<div class="f full"><label>المحاور التي نوقشت</label>' + grp('checkbox', 'topics', TOPICS) + '</div>' +
+    '<div class="f full"><label>نتيجة ' + (visit ? 'الزيارة' : 'التواصل') + '</label>' + grp('radio', 'result', RESULTS) + (visit ? '<span class="note">«حمل التطبيق» يُطابَق مع لوحة DENTLY عند المراجعة.</span>' : '') + '</div>' +
+    '<div class="f full"><label>المحور الأكثر إثارة لاهتمامه</label>' + grp('radio', 'axis', AXES) + '</div>' +
+    '<div class="f full"><label>لماذا؟ (سبب اهتمامه بهذا المحور أو عدم اهتمامه)</label><textarea id="rpWhy"></textarea></div>' +
+    '<div class="f full"><label>صفات الطبيب</label>' + grp('checkbox', 'traits', TRAITS) + '</div>' +
+    (visit ? ta('rpQ', 'الأسئلة التي طرحها الطبيب') + ta('rpOp', 'رأيه في DENTLY') + ta('rpNat', 'طبيعة الزيارة') + ta('rpOut', 'النتيجة النهائية للزيارة، وإجاباته عن المشاكل التي يعاني منها') : '') +
+    '<div class="f"><label>موعد المتابعة (اختياري)</label><input type="date" id="rpNext" min="' + today() + '"></div>' +
+    '<div class="f full"><label>ملاحظات (اختياري)</label><textarea id="rpNotes"></textarea></div>' +
+    '<div class="f full"><button onclick="sendReport(\'' + kind + '\')">إرسال للمراجعة</button></div></div></div>';
+  dayName();
+  $('repForm').scrollIntoView({ behavior: 'smooth' });
+}
+function sendReport(kind) {
+  const visit = kind === 'visit';
+  const p = { customerId: cur, date: $('rpDate').value, time: $('rpTime').value, topics: vals('topics'), result: val('result'), axis: val('axis'), axisReason: $('rpWhy').value, traits: vals('traits'), nextFollowUp: $('rpNext').value, notes: $('rpNotes').value };
+  if (visit) Object.assign(p, { duration: $('rpDur').value, q: $('rpQ').value, opinion: $('rpOp').value, nature: $('rpNat').value, outcome: $('rpOut').value });
+  else p.channel = $('rpChannel').value;
+  call(visit ? 'flowLogVisit' : 'flowLogContact', [session, p], r => { alert(r.message); openCustomer(cur); });
 }
 function ncType() {
   const doc = $('ncType').value === 'طبيب';
@@ -371,20 +420,30 @@ function addCustomer() {
 /* ---------- مراجعة الإدارة ---------- */
 let rv = [];
 function loadReview() {
-  call('flowReviewList', [session], r => {
+  call('flowReviewQueue', [session], r => {
     rv = r;
     $('tab-review').textContent = 'المراجعة' + (r.length ? ' (' + r.length + ')' : '');
-    $('reviewBody').innerHTML = r.length
-      ? '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>العميل</th><th>النشاط</th><th>نقاط</th><th>التفاصيل</th><th></th></tr></thead><tbody>' +
-        r.map((x, i) => '<tr><td>' + safe(x.repName) + '</td><td>' + safe(x.customerName) + '</td><td>' + safe(TL[x.type] || x.type) + '<br><span class="note">' + safe(x.date) + '</span></td><td>' + safe(x.points) + '</td><td>' + safe([x.channel, x.evidence, x.notes].filter(Boolean).join(' · ')) + '</td><td style="white-space:nowrap"><button class="btn" onclick="reviewAct(' + i + ',\'approve\')">' + (x.state === 'NeedsPosting' ? 'إضافة النقاط' : 'اعتماد') + '</button> ' + (x.state === 'Pending' ? '<button class="btn ghost" onclick="reviewAct(' + i + ',\'reject\')">رفض</button>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
-      : '<p class="note">لا توجد أنشطة بانتظار المراجعة.</p>';
+    const kv = (k, v) => v ? '<dt>' + k + '</dt><dd>' + safe(v) + '</dd>' : '';
+    $('reviewBody').innerHTML = r.length ? r.map((x, i) => {
+      const act = '<div class="row" style="margin-top:12px"><button class="btn" onclick="reviewItem(' + i + ',\'approve\')">' + (x.state === 'NeedsPosting' ? 'إضافة النقاط' : 'اعتماد') + '</button>' + (x.state === 'Pending' ? '<button class="btn ghost" onclick="reviewItem(' + i + ',\'reject\')">رفض</button>' : '') + '</div>';
+      if (x.kind === 'report') {
+        const visit = x.type === 'VISIT';
+        return '<div class="card" style="margin-top:14px"><h3 style="margin-top:0">' + safe(x.repName) + ' — ' + safe(x.customerName) + '</h3>' +
+          '<p><span class="tag ok">' + (visit ? 'زيارة ميدانية' : 'تواصل') + '</span> <span class="tag wait">نقاط مقترحة: ' + safe(x.points) + '</span> ' + (x.resultCode === 'APP_DOWNLOADED' ? '<span class="tag no">تحقّق من لوحة DENTLY: حمل التطبيق</span>' : '') + '</p>' +
+          '<dl class="kv">' + kv('التاريخ والوقت', x.date + ' · ' + x.time) + (visit ? kv('المدة', x.duration + ' دقيقة') : kv('القناة', x.channel)) + kv('المحاور', x.topics) + kv('النتيجة', x.result) + kv('المحور الأكثر اهتماماً', x.axis) + kv('لماذا', x.why) + kv('صفات الطبيب', x.traits) +
+          (visit ? kv('أسئلة الطبيب', x.q) + kv('رأيه في DENTLY', x.opinion) + kv('طبيعة الزيارة', x.nature) + kv('النتيجة النهائية', x.outcome) : '') + kv('ملاحظات', x.notes) +
+          kv('الأنشطة الناتجة', x.parts.map(p => (TL[p.type] || p.type) + ' (' + p.points + ')').join('، ')) + '</dl>' + act + '</div>';
+      }
+      return '<div class="card" style="margin-top:14px"><h3 style="margin-top:0">' + safe(x.repName) + ' — ' + safe(x.customerName) + '</h3><p><span class="tag ok">' + safe(TL[x.type] || x.type) + '</span> <span class="tag wait">نقاط: ' + safe(x.points) + '</span> <span class="note">' + safe(x.date) + '</span></p>' +
+        '<dl class="kv">' + kv('القناة', x.channel) + kv('مرجع الإثبات', x.evidence) + kv('ملاحظات', x.notes) + '</dl>' + act + '</div>';
+    }).join('') : '<p class="note">لا توجد تقارير أو أنشطة بانتظار المراجعة.</p>';
   });
 }
-function reviewAct(i, decision) {
+function reviewItem(i, decision) {
   const x = rv[i]; let why = '';
   if (decision === 'reject') { why = prompt('سبب الرفض (إلزامي):') || ''; if (why.trim().length < 3) return; }
-  else if (!confirm('اعتماد «' + (TL[x.type] || x.type) + '» للمندوبة ' + x.repName + '؟')) return;
-  call('flowReviewActivity', [session, x.id, decision, why], r => { alert(r.message || 'تم'); loadReview(); });
+  else if (!confirm(x.resultCode === 'APP_DOWNLOADED' ? 'هل طابقتَ «حمل التطبيق» مع لوحة DENTLY؟ اضغط موافق للاعتماد.' : 'تأكيد الاعتماد؟')) return;
+  call(x.kind === 'report' ? 'flowReviewReport' : 'flowReviewActivity', [session, x.id, decision, why], r => { alert(r.message || 'تم'); loadReview(); });
 }
 
 /* ---------- تسجيل نشاط (المندوبة) ---------- */
@@ -439,6 +498,14 @@ function saveRank(i) {
   const eff = prompt('تاريخ سريان القرار (YYYY-MM-DD):', today()); if (!eff) return;
   const why = prompt('سبب القرار (إلزامي):') || ''; if (why.trim().length < 3) return;
   call('flowSetRank', [session, x.id, code, eff.trim(), why], r => { alert(r.message || 'تم'); loadReps(); });
+}
+
+/* ---------- فحص الحساب ---------- */
+function diag() {
+  call('flowDiagnostics', [session], d => {
+    $('diagBody').innerHTML = '<pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px">' + safe(JSON.stringify(d, null, 2)) + '</pre>';
+    $('diagBody').scrollIntoView({ behavior: 'smooth' });
+  });
 }
 
 /* ---------- الأنشطة ---------- */
