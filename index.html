@@ -119,6 +119,7 @@ tbody tr:hover{background:#fafcfd}
 </header>
 
 <div id="app" class="hidden">
+  <div id="banner" class="hidden" style="background:#fde4e0;color:#b4382a;padding:12px 18px;font-weight:600"></div>
   <nav>
     <button onclick="tab('review')" id="tab-review">المراجعة</button>
     <button onclick="tab('reps')" id="tab-reps">الرتب</button>
@@ -216,7 +217,11 @@ tbody tr:hover{background:#fafcfd}
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.7';
+const UI_VERSION = '1.7.2';
+function showPageError(msg) { const b = document.getElementById('banner'); if (!b) return; b.textContent = 'خطأ في الصفحة: ' + msg; b.classList.remove('hidden'); }
+window.addEventListener('error', ev => showPageError(ev.message || 'غير معروف'));
+window.addEventListener('unhandledrejection', ev => showPageError((ev.reason && ev.reason.message) || String(ev.reason)));
+const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7 };
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -261,7 +266,12 @@ function start() {
     if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
     $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
     tab(isAdmin ? 'review' : 'mine');
-    fetch(API_URL).then(x => x.json()).then(j => { $('ver').textContent = 'الواجهة ' + UI_VERSION + ' · الخادم ' + (j.version || 'قديم'); }).catch(() => { $('ver').textContent = 'الواجهة ' + UI_VERSION; });
+    fetch(API_URL).then(x => x.json()).then(j => {
+      $('ver').textContent = 'الواجهة ' + UI_VERSION + ' · الخادم ' + (j.version || 'قديم');
+      const old = Object.keys(REQ_BUILD).filter(k => ((j.build || {})[k] || 0) < REQ_BUILD[k]);
+      $('banner').textContent = old.length ? 'ملفات Apps Script التالية قديمة أو ناقصة: ' + old.join('، ') + ' — استبدلها بآخر نسخة ثم انشر New version.' : '';
+      $('banner').classList.toggle('hidden', !old.length);
+    }).catch(() => { $('ver').textContent = 'الواجهة ' + UI_VERSION; });
   }).catch(e => logout(e.message));
 }
 function logout(msg) {
@@ -340,6 +350,7 @@ const AXES = [['SUPPLY', 'Supply'], ['LAB', 'LAB'], ['IMDAD', 'IMDAD'], ['NONE',
 const TRAITS = [['INTERACTIVE', 'متفاعل'], ['COLD', 'بارد'], ['FRIENDLY', 'ودود'], ['ARROGANT', 'متعجرف'], ['INDIFFERENT', 'غير مكترث']];
 
 function renderCustomer(d) {
+  if (!d.overall) d.overall = { label: '—', pending: false };   // server too old: the banner explains
   cur = d.customer.id; curData = d;
   const c = d.customer, admin = user.role === 'ADMIN';
   let h = '<div class="card"><h2>' + safe(c.name) + '</h2><p class="note">' + safe(c.type) + ' · ' + safe(c.phone) + ' · ' + safe(c.area || c.university) + '</p>' +
@@ -353,7 +364,8 @@ function renderCustomer(d) {
   } else {
     h += '<div class="row">' + ['SUPPLY', 'LAB', 'IMDAD'].map(p => '<span class="tag ok">' + p + ': ' + safe(d.statuses[p] || '—') + '</span>').join('') + '</div>';
   }
-  if (d.canLog) h += '<h3>تسجيل</h3><div class="row"><button onclick="openForm(\'contact\')">تسجيل تواصل</button><button class="ghost" onclick="openForm(\'visit\')">تسجيل زيارة ميدانية</button></div><div id="repForm"></div>';
+  if (!admin && !(d.canLog && c.type === 'طبيب')) h += '<p class="note">تسجيل التواصل والزيارات متاح للأطباء المنسوبين إلى حسابك فقط.</p>';
+  if (d.canLog && c.type === 'طبيب') h += '<h3>تسجيل</h3><div class="row"><button onclick="openForm(\'contact\')">تسجيل تواصل</button><button class="ghost" onclick="openForm(\'visit\')">تسجيل زيارة ميدانية</button></div><div id="repForm"></div>';
   $('detail').innerHTML = h + '</div>';
   $('detail').scrollIntoView({ behavior: 'smooth' });
 }
@@ -376,7 +388,8 @@ function dayName() {
   const v = $('rpDate').value; if (!v) return '';
   $('rpDay').textContent = new Date(v + 'T12:00:00').toLocaleDateString('ar', { weekday: 'long' });
 }
-function openForm(kind) {
+function openForm(kind) { try { openFormImpl(kind); } catch (e) { alert('تعذّر فتح النموذج: ' + e.message); showPageError(e.message); } }
+function openFormImpl(kind) {
   const visit = kind === 'visit';
   const ta = (id, label) => '<div class="f full"><label>' + label + '</label><textarea id="' + id + '"></textarea></div>';
   $('repForm').innerHTML = '<div class="card" style="margin-top:14px;background:var(--paper)"><h3 style="margin-top:0">' + (visit ? 'تقرير زيارة ميدانية' : 'تسجيل تواصل') + '</h3><div class="form">' +
