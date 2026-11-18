@@ -122,9 +122,12 @@ tbody tr:hover{background:#fafcfd}
   <div id="banner" class="hidden" style="background:#fde4e0;color:#b4382a;padding:12px 18px;font-weight:600"></div>
   <nav>
     <button onclick="tab('review')" id="tab-review">المراجعة</button>
+    <button onclick="tab('sales')" id="tab-sales">المبيعات</button>
+    <button onclick="tab('comm')" id="tab-comm">العمولات</button>
     <button onclick="tab('reps')" id="tab-reps">الرتب</button>
     <button onclick="tab('mine')" id="tab-mine">حسابي</button>
     <button onclick="tab('tasks')" id="tab-tasks">مهامي</button>
+    <button onclick="tab('wallet')" id="tab-wallet">محفظتي</button>
     <button onclick="tab('logAct')" id="tab-logAct">تسجيل تواصل / زيارة</button>
     <button onclick="tab('overview')" id="tab-overview">الأداء</button>
     <button onclick="tab('customers')" id="tab-customers">العملاء</button>
@@ -140,6 +143,41 @@ tbody tr:hover{background:#fafcfd}
       <h2>مراجعة الأنشطة</h2>
       <button class="btn ghost" onclick="loadReview()">تحديث</button>
       <div id="reviewBody"></div>
+    </section>
+
+    <section id="sales" class="card view hidden">
+      <h2>الطلبات والمبيعات</h2>
+      <div class="form">
+        <div class="f full"><label>الطبيب</label><select id="slCust" onchange="slOwner()"></select></div>
+        <div class="f"><label>المندوبة المنسوب لها الطلب</label><select id="slRep"></select></div>
+        <div class="f"><label>المسار</label><select id="slPath" onchange="slPathChanged()"><option>Supply</option><option>LAB</option><option>IMDAD</option></select></div>
+        <div class="f"><label>رقم الطلب في تطبيق DENTLY</label><input id="slExt"></div>
+        <div class="f hidden" id="slSubBox"><label>رقم الاشتراك (IMDAD)</label><input id="slSub"></div>
+        <div class="f"><label>تاريخ الطلب</label><input type="date" id="slOrd"></div>
+        <div class="f"><label>قيمة الطلب</label><input type="number" id="slVal" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="f"><label>التكلفة المباشرة</label><input type="number" id="slCost" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="f"><label>حالة الطلب</label><select id="slSt"><option value="Delivered">تم التسليم</option><option value="Pending">قيد التنفيذ</option><option value="Cancelled">ملغى</option></select></div>
+        <div class="f"><label>تاريخ التسليم</label><input type="date" id="slDel"></div>
+        <div class="f"><label>التحصيل</label><select id="slCol"><option value="Collected">محصّل</option><option value="Uncollected">غير محصّل</option></select></div>
+        <div class="f"><label>تاريخ التحصيل</label><input type="date" id="slColD"></div>
+        <div class="f"><label>الإرجاع</label><select id="slRet"><option value="None">لا يوجد</option><option value="Partial">جزئي</option><option value="Full">كامل</option></select></div>
+        <div class="f full"><label>ملاحظات</label><input id="slNote"></div>
+        <div class="f full"><button onclick="saleCreate()">تسجيل الطلب</button></div>
+      </div>
+      <p class="note">البيانات المالية الناقصة لا تُعدّ صفراً. العمولة تُقترح بعد التسليم والتحصيل وعدم الإرجاع وربح موجب فقط.</p>
+      <div id="saleEditBox"></div>
+      <div class="scroll" id="salesTable"></div>
+    </section>
+
+    <section id="comm" class="card view hidden">
+      <h2>اعتماد العمولات</h2>
+      <button class="btn ghost" onclick="loadComm()">تحديث</button>
+      <div id="commBody"></div>
+    </section>
+
+    <section id="wallet" class="card view hidden">
+      <h2>محفظتي</h2>
+      <div id="walletBody"></div>
     </section>
 
     <section id="reps" class="card view hidden">
@@ -217,11 +255,11 @@ tbody tr:hover{background:#fafcfd}
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.7.2';
+const UI_VERSION = '1.8';
 function showPageError(msg) { const b = document.getElementById('banner'); if (!b) return; b.textContent = 'خطأ في الصفحة: ' + msg; b.classList.remove('hidden'); }
 window.addEventListener('error', ev => showPageError(ev.message || 'غير معروف'));
 window.addEventListener('unhandledrejection', ev => showPageError((ev.reason && ev.reason.message) || String(ev.reason)));
-const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7 };
+const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 1 };
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -264,7 +302,7 @@ function start() {
     $('tab-newCustomer').classList.toggle('hidden', isAdmin);
     $('tab-overview').classList.toggle('hidden', !isAdmin); $('tab-mine').classList.toggle('hidden', isAdmin);
     if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
-    $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
+    $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-sales').classList.toggle('hidden', !isAdmin); $('tab-comm').classList.toggle('hidden', !isAdmin); $('tab-wallet').classList.toggle('hidden', isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
     tab(isAdmin ? 'review' : 'mine');
     fetch(API_URL).then(x => x.json()).then(j => {
       $('ver').textContent = 'الواجهة ' + UI_VERSION + ' · الخادم ' + (j.version || 'قديم');
@@ -296,6 +334,9 @@ function tab(id) {
   if (id === 'mine') loadMine();
   if (id === 'tasks') loadTasks();
   if (id === 'reps') loadReps();
+  if (id === 'sales') loadSales();
+  if (id === 'comm') loadComm();
+  if (id === 'wallet') loadWallet();
   if (id === 'overview') loadPerformance();
 }
 function metric(name, value, cls) { return '<div class="metric ' + (cls || '') + '">' + safe(name) + '<b>' + safe(value) + '</b></div>'; }
@@ -518,6 +559,94 @@ function diag() {
   call('flowDiagnostics', [session], d => {
     $('diagBody').innerHTML = '<pre dir="ltr" style="white-space:pre-wrap;word-break:break-all;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px">' + safe(JSON.stringify(d, null, 2)) + '</pre>';
     $('diagBody').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+/* ---------- المبيعات والعمولات والمحفظة ---------- */
+const OSN = { Delivered: 'تم التسليم', Pending: 'قيد التنفيذ', Cancelled: 'ملغى' }, CSN = { Collected: 'محصّل', Uncollected: 'غير محصّل' }, RSN = { None: 'لا يوجد', Partial: 'جزئي', Full: 'كامل' };
+const CST = { Pending: ['قيد الاعتماد', 'wait'], Approved: ['معتمدة', 'ok'], Rejected: ['مرفوضة', 'no'] };
+const money = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+let sfd = null, sl = [], cm = null;
+
+function loadSales() {
+  call('flowSaleFormData', [session], d => {
+    sfd = d;
+    $('slCust').innerHTML = d.customers.map((c, i) => '<option value="' + i + '">' + safe(c.name) + '</option>').join('');
+    $('slRep').innerHTML = d.reps.map(r => '<option value="' + safe(r.id) + '">' + safe(r.name) + '</option>').join('');
+    slOwner();
+  });
+  call('flowSalesList', [session], r => {
+    sl = r;
+    $('salesTable').innerHTML = r.length ? '<table><thead><tr><th>الطلب</th><th>الطبيب</th><th>المندوبة</th><th>المسار</th><th>الحالة</th><th>الربح</th><th>العمولة</th><th></th></tr></thead><tbody>' +
+      r.map((x, i) => '<tr><td>' + safe(x.external) + '<br><span class="note">' + safe(x.orderDate) + '</span></td><td>' + safe(x.customer) + '</td><td>' + safe(x.rep) + '</td><td>' + safe(x.path) + '</td>' +
+        '<td>' + safe(OSN[x.status] || x.status) + ' · ' + safe(CSN[x.collection] || x.collection) + (x.returned !== 'None' ? ' · إرجاع ' + safe(RSN[x.returned]) : '') + '</td><td>' + money(x.profit) + '</td>' +
+        '<td>' + (x.commission ? '<span class="tag ' + (CST[x.commission] || ['', ''])[1] + '">' + safe((CST[x.commission] || [x.commission])[0]) + '</span>' : (x.preview ? '<span class="note">مؤهل: ' + money(x.preview.amount) + '</span>' : '<span class="note">—</span>')) + '</td>' +
+        '<td style="white-space:nowrap">' + (x.commission && x.commission !== 'Rejected' ? '' : '<button class="btn ghost" onclick="saleEdit(' + i + ')">تحديث</button> ') + (x.preview ? '<button class="btn" onclick="commPropose(' + i + ')">اقتراح العمولة</button>' : '') + '</td></tr>').join('') + '</tbody></table>'
+      : '<p class="note" style="padding:14px">لا توجد طلبات بعد.</p>';
+  });
+}
+function slOwner() { if (!sfd) return; const c = sfd.customers[Number($('slCust').value)]; if (c && c.owner) $('slRep').value = c.owner; }
+function slPathChanged() { $('slSubBox').classList.toggle('hidden', $('slPath').value !== 'IMDAD'); }
+function saleCreate() {
+  const c = sfd && sfd.customers[Number($('slCust').value)];
+  if (!c) return alert('اختر الطبيب.');
+  const p = { customerId: c.id, srId: $('slRep').value, path: $('slPath').value, externalOrderId: $('slExt').value.trim(), orderDate: $('slOrd').value,
+    orderValue: $('slVal').value, directCost: $('slCost').value, orderStatus: $('slSt').value, deliveredAt: $('slDel').value,
+    collectionStatus: $('slCol').value, collectedAt: $('slColD').value, returnStatus: $('slRet').value, subscriptionId: $('slSub').value.trim(), notes: $('slNote').value };
+  call('flowSaleCreate', [session, p], r => { alert('تم تسجيل الطلب. الربح الإجمالي: ' + money(r.grossProfit)); ['slExt', 'slVal', 'slCost', 'slNote', 'slSub'].forEach(k => $(k).value = ''); loadSales(); });
+}
+function saleEdit(i) {
+  const x = sl[i];
+  $('saleEditBox').innerHTML = '<div class="card" style="margin:14px 0"><h3>تحديث الطلب ' + safe(x.external) + ' — ' + safe(x.customer) + '</h3><div class="form">' +
+    '<div class="f"><label>حالة الطلب</label><select id="seSt">' + Object.keys(OSN).map(k => '<option value="' + k + '"' + (k === x.status ? ' selected' : '') + '>' + OSN[k] + '</option>').join('') + '</select></div>' +
+    '<div class="f"><label>تاريخ التسليم</label><input type="date" id="seDel" value="' + safe(x.delivered) + '"></div>' +
+    '<div class="f"><label>التحصيل</label><select id="seCol">' + Object.keys(CSN).map(k => '<option value="' + k + '"' + (k === x.collection ? ' selected' : '') + '>' + CSN[k] + '</option>').join('') + '</select></div>' +
+    '<div class="f"><label>تاريخ التحصيل</label><input type="date" id="seColD" value="' + safe(x.collected) + '"></div>' +
+    '<div class="f"><label>الإرجاع</label><select id="seRet">' + Object.keys(RSN).map(k => '<option value="' + k + '"' + (k === x.returned ? ' selected' : '') + '>' + RSN[k] + '</option>').join('') + '</select></div>' +
+    '<div class="f"><label>التكلفة المباشرة</label><input type="number" id="seCost" min="0" step="0.01" value="' + safe(x.cost) + '"></div>' +
+    '<div class="f full"><button onclick="saleSave(' + i + ')">حفظ التحديث</button></div></div></div>';
+  $('saleEditBox').scrollIntoView({ behavior: 'smooth' });
+}
+function saleSave(i) {
+  const p = { orderStatus: $('seSt').value, deliveredAt: $('seDel').value, collectionStatus: $('seCol').value, collectedAt: $('seColD').value, returnStatus: $('seRet').value, directCost: $('seCost').value };
+  call('flowSaleUpdate', [session, sl[i].id, p], r => { alert('تم التحديث. الربح الإجمالي: ' + money(r.grossProfit)); $('saleEditBox').innerHTML = ''; loadSales(); });
+}
+function commPropose(i) {
+  const x = sl[i];
+  if (!confirm('اقتراح عمولة ' + money(x.preview.amount) + ' (' + Math.round(x.preview.rate * 100) + '%) — ' + x.preview.stage + '؟')) return;
+  call('flowCommissionPropose', [session, x.id], r => { alert('أُنشئ اقتراح العمولة وهو بانتظار الاعتماد.'); loadSales(); });
+}
+
+function loadComm() {
+  call('flowCommissionsAdmin', [session], d => {
+    cm = d;
+    const row = (c, i, acts) => '<tr><td>' + safe(c.rep) + '</td><td>' + safe(c.customer) + '<br><span class="note">' + safe(c.order) + ' · ' + safe(c.path) + '</span></td><td>' + safe(c.reason) + '</td><td>' + money(c.profit) + '</td><td>' + Math.round(c.rate * 100) + '%</td><td><b>' + money(c.amount) + '</b></td><td>' +
+      (acts ? '<button class="btn" onclick="commReview(' + i + ',\'approve\')">اعتماد</button> <button class="btn ghost" onclick="commReview(' + i + ',\'reject\')">رفض</button>' : '<span class="tag ' + (CST[c.status] || ['', ''])[1] + '">' + safe((CST[c.status] || [c.status])[0]) + '</span>') + '</td></tr>';
+    const head = '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY</th><th>النسبة</th><th>المبلغ</th><th></th></tr></thead><tbody>';
+    $('tab-comm').textContent = 'العمولات' + (d.pending.length ? ' (' + d.pending.length + ')' : '');
+    $('commBody').innerHTML = '<h3>بانتظار الاعتماد</h3>' + (d.pending.length ? head + d.pending.map((c, i) => row(c, i, true)).join('') + '</tbody></table></div>' : '<p class="note">لا توجد عمولات معلقة.</p>') +
+      '<h3>آخر القرارات</h3>' + (d.recent.length ? head + d.recent.map((c, i) => row(c, i, false)).join('') + '</tbody></table></div>' : '<p class="note">لا توجد قرارات بعد.</p>') +
+      '<p class="note">الاعتماد يُنشئ استحقاقاً فقط ولا يعني دفع أي مبلغ.</p>';
+  });
+}
+function commReview(i, decision) {
+  const c = cm.pending[i]; let why = '';
+  if (decision === 'reject') { why = prompt('سبب الرفض (إلزامي):') || ''; if (why.trim().length < 3) return; }
+  else if (!confirm('اعتماد عمولة ' + money(c.amount) + ' للمندوبة ' + c.rep + '؟')) return;
+  call('flowCommissionReview', [session, c.id, decision, why], r => { alert(decision === 'approve' ? 'تم اعتماد الاستحقاق (لم يُدفع شيء).' : 'تم الرفض.'); loadComm(); });
+}
+
+function loadWallet() {
+  call('flowMyWallet', [session], d => {
+    let h = '<div class="tiles">' + metric('عمولات معتمدة (مستحقة)', money(d.totals.approved), 'hero') + metric('عمولات قيد الاعتماد', money(d.totals.pending)) +
+      metric('رصيد النقاط', d.points == null ? '—' : d.points) + '</div>';
+    if (!d.pointValueSet) h += '<p class="note">قيمة النقطة غير محددة بعد، لذلك تُعرض النقاط كتقييم ولا يوجد مبلغ نقدي مقابلها.</p>';
+    h += '<h3>تفاصيل العمولات</h3>';
+    h += d.commissions.length ? '<div class="scroll"><table><thead><tr><th>التاريخ</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY</th><th>النسبة</th><th>المبلغ</th><th>الحالة</th></tr></thead><tbody>' +
+      d.commissions.map(c => '<tr><td>' + safe(c.date) + '</td><td>' + safe(c.customer) + '<br><span class="note">' + safe(c.order) + ' · ' + safe(c.path) + '</span></td><td>' + safe(c.reason) + '</td><td>' + money(c.profit) + '</td><td>' + Math.round(c.rate * 100) + '%</td><td><b>' + money(c.amount) + '</b></td><td><span class="tag ' + (CST[c.status] || ['', ''])[1] + '">' + safe((CST[c.status] || [c.status])[0]) + '</span>' + (c.note ? '<br><span class="note">' + safe(c.note) + '</span>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<p class="note">لا توجد عمولات بعد. تظهر هنا بعد اعتماد الإدارة لطلب مؤهل.</p>';
+    h += '<p class="note">الصرف الفعلي تعتمده الإدارة بشكل منفصل؛ ظهور المبلغ هنا لا يعني أنه صُرف.</p>';
+    $('walletBody').innerHTML = h;
   });
 }
 
