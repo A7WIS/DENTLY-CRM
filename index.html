@@ -124,6 +124,7 @@ tbody tr:hover{background:#fafcfd}
     <button onclick="tab('review')" id="tab-review">المراجعة</button>
     <button onclick="tab('sales')" id="tab-sales">المبيعات</button>
     <button onclick="tab('comm')" id="tab-comm">العمولات</button>
+    <button onclick="tab('dues')" id="tab-dues">المستحقات</button>
     <button onclick="tab('reps')" id="tab-reps">الرتب</button>
     <button onclick="tab('mine')" id="tab-mine">حسابي</button>
     <button onclick="tab('tasks')" id="tab-tasks">مهامي</button>
@@ -154,8 +155,8 @@ tbody tr:hover{background:#fafcfd}
         <div class="f"><label>رقم الطلب في تطبيق DENTLY</label><input id="slExt"></div>
         <div class="f hidden" id="slSubBox"><label>رقم الاشتراك (IMDAD)</label><input id="slSub"></div>
         <div class="f"><label>تاريخ الطلب</label><input type="date" id="slOrd"></div>
-        <div class="f"><label>قيمة الطلب</label><input type="number" id="slVal" min="0" step="0.01" inputmode="decimal"></div>
-        <div class="f"><label>التكلفة المباشرة</label><input type="number" id="slCost" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="f"><label>قيمة الطلب (USD)</label><input type="number" id="slVal" min="0" step="0.01" inputmode="decimal"></div>
+        <div class="f"><label>التكلفة المباشرة (USD)</label><input type="number" id="slCost" min="0" step="0.01" inputmode="decimal"></div>
         <div class="f"><label>حالة الطلب</label><select id="slSt"><option value="Delivered">تم التسليم</option><option value="Pending">قيد التنفيذ</option><option value="Cancelled">ملغى</option></select></div>
         <div class="f"><label>تاريخ التسليم</label><input type="date" id="slDel"></div>
         <div class="f"><label>التحصيل</label><select id="slCol"><option value="Collected">محصّل</option><option value="Uncollected">غير محصّل</option></select></div>
@@ -173,6 +174,12 @@ tbody tr:hover{background:#fafcfd}
       <h2>اعتماد العمولات</h2>
       <button class="btn ghost" onclick="loadComm()">تحديث</button>
       <div id="commBody"></div>
+    </section>
+
+    <section id="dues" class="card view hidden">
+      <h2>مستحقات النقاط</h2>
+      <button class="btn ghost" onclick="loadDues()">تحديث</button>
+      <div id="duesBody"></div>
     </section>
 
     <section id="wallet" class="card view hidden">
@@ -255,11 +262,11 @@ tbody tr:hover{background:#fafcfd}
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.8';
+const UI_VERSION = '1.10.1';
 function showPageError(msg) { const b = document.getElementById('banner'); if (!b) return; b.textContent = 'خطأ في الصفحة: ' + msg; b.classList.remove('hidden'); }
 window.addEventListener('error', ev => showPageError(ev.message || 'غير معروف'));
 window.addEventListener('unhandledrejection', ev => showPageError((ev.reason && ev.reason.message) || String(ev.reason)));
-const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 1 };
+const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 3, Flow_18: 3 };
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -302,7 +309,7 @@ function start() {
     $('tab-newCustomer').classList.toggle('hidden', isAdmin);
     $('tab-overview').classList.toggle('hidden', !isAdmin); $('tab-mine').classList.toggle('hidden', isAdmin);
     if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
-    $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-sales').classList.toggle('hidden', !isAdmin); $('tab-comm').classList.toggle('hidden', !isAdmin); $('tab-wallet').classList.toggle('hidden', isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
+    $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-sales').classList.toggle('hidden', !isAdmin); $('tab-comm').classList.toggle('hidden', !isAdmin); $('tab-dues').classList.toggle('hidden', !isAdmin); $('tab-wallet').classList.toggle('hidden', isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
     tab(isAdmin ? 'review' : 'mine');
     fetch(API_URL).then(x => x.json()).then(j => {
       $('ver').textContent = 'الواجهة ' + UI_VERSION + ' · الخادم ' + (j.version || 'قديم');
@@ -336,6 +343,7 @@ function tab(id) {
   if (id === 'reps') loadReps();
   if (id === 'sales') loadSales();
   if (id === 'comm') loadComm();
+  if (id === 'dues') loadDues();
   if (id === 'wallet') loadWallet();
   if (id === 'overview') loadPerformance();
 }
@@ -361,7 +369,7 @@ function loadMine() {
   call('flowMyMonth', [session, $('myMonth').value], d => {
     const c = d.commissions;
     let h = '<div class="tiles">' + metric('رصيد النقاط الكلي', d.points.balance, 'hero') + metric('نقاط هذا الشهر', d.points.month) +
-      metric('عمولات معتمدة', c.approved) + metric('عمولات قيد الاعتماد', c.pending) + '</div>' +
+      metric('عمولات معتمدة', c.approved) + metric('عمولات قيد الاعتماد (USD)', c.pending) + '</div>' +
       '<p class="note">العمولات المعتمدة حسب المسار — Supply: ' + safe(c.byPath.Supply) + ' · LAB: ' + safe(c.byPath.LAB) + ' · IMDAD: ' + safe(c.byPath.IMDAD) + '</p>' +
       '<h3>أهداف الشهر</h3><div class="tiles">' + d.goals.map(g => '<div class="metric">' + safe(g.label) + '<b>' + (g.value == null ? '—' : safe(g.value)) + ' / ' + safe(g.target) + '</b>' + (g.value == null ? '' : bar(g.value, g.target)) + '</div>').join('') + '</div>' +
       '<h3>مواعيد المتابعة</h3>';
@@ -564,6 +572,7 @@ function diag() {
 
 /* ---------- المبيعات والعمولات والمحفظة ---------- */
 const OSN = { Delivered: 'تم التسليم', Pending: 'قيد التنفيذ', Cancelled: 'ملغى' }, CSN = { Collected: 'محصّل', Uncollected: 'غير محصّل' }, RSN = { None: 'لا يوجد', Partial: 'جزئي', Full: 'كامل' };
+const DST = { Accrued: ['مستحق غير مصروف', 'wait'], Paid: ['مصروف', 'ok'] };
 const CST = { Pending: ['قيد الاعتماد', 'wait'], Approved: ['معتمدة', 'ok'], Rejected: ['مرفوضة', 'no'] };
 const money = n => Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
 let sfd = null, sl = [], cm = null;
@@ -577,7 +586,7 @@ function loadSales() {
   });
   call('flowSalesList', [session], r => {
     sl = r;
-    $('salesTable').innerHTML = r.length ? '<table><thead><tr><th>الطلب</th><th>الطبيب</th><th>المندوبة</th><th>المسار</th><th>الحالة</th><th>الربح</th><th>العمولة</th><th></th></tr></thead><tbody>' +
+    $('salesTable').innerHTML = r.length ? '<table><thead><tr><th>الطلب</th><th>الطبيب</th><th>المندوبة</th><th>المسار</th><th>الحالة</th><th>الربح (USD)</th><th>العمولة (USD)</th><th></th></tr></thead><tbody>' +
       r.map((x, i) => '<tr><td>' + safe(x.external) + '<br><span class="note">' + safe(x.orderDate) + '</span></td><td>' + safe(x.customer) + '</td><td>' + safe(x.rep) + '</td><td>' + safe(x.path) + '</td>' +
         '<td>' + safe(OSN[x.status] || x.status) + ' · ' + safe(CSN[x.collection] || x.collection) + (x.returned !== 'None' ? ' · إرجاع ' + safe(RSN[x.returned]) : '') + '</td><td>' + money(x.profit) + '</td>' +
         '<td>' + (x.commission ? '<span class="tag ' + (CST[x.commission] || ['', ''])[1] + '">' + safe((CST[x.commission] || [x.commission])[0]) + '</span>' : (x.preview ? '<span class="note">مؤهل: ' + money(x.preview.amount) + '</span>' : '<span class="note">—</span>')) + '</td>' +
@@ -603,7 +612,7 @@ function saleEdit(i) {
     '<div class="f"><label>التحصيل</label><select id="seCol">' + Object.keys(CSN).map(k => '<option value="' + k + '"' + (k === x.collection ? ' selected' : '') + '>' + CSN[k] + '</option>').join('') + '</select></div>' +
     '<div class="f"><label>تاريخ التحصيل</label><input type="date" id="seColD" value="' + safe(x.collected) + '"></div>' +
     '<div class="f"><label>الإرجاع</label><select id="seRet">' + Object.keys(RSN).map(k => '<option value="' + k + '"' + (k === x.returned ? ' selected' : '') + '>' + RSN[k] + '</option>').join('') + '</select></div>' +
-    '<div class="f"><label>التكلفة المباشرة</label><input type="number" id="seCost" min="0" step="0.01" value="' + safe(x.cost) + '"></div>' +
+    '<div class="f"><label>التكلفة المباشرة (USD)</label><input type="number" id="seCost" min="0" step="0.01" value="' + safe(x.cost) + '"></div>' +
     '<div class="f full"><button onclick="saleSave(' + i + ')">حفظ التحديث</button></div></div></div>';
   $('saleEditBox').scrollIntoView({ behavior: 'smooth' });
 }
@@ -622,7 +631,7 @@ function loadComm() {
     cm = d;
     const row = (c, i, acts) => '<tr><td>' + safe(c.rep) + '</td><td>' + safe(c.customer) + '<br><span class="note">' + safe(c.order) + ' · ' + safe(c.path) + '</span></td><td>' + safe(c.reason) + '</td><td>' + money(c.profit) + '</td><td>' + Math.round(c.rate * 100) + '%</td><td><b>' + money(c.amount) + '</b></td><td>' +
       (acts ? '<button class="btn" onclick="commReview(' + i + ',\'approve\')">اعتماد</button> <button class="btn ghost" onclick="commReview(' + i + ',\'reject\')">رفض</button>' : '<span class="tag ' + (CST[c.status] || ['', ''])[1] + '">' + safe((CST[c.status] || [c.status])[0]) + '</span>') + '</td></tr>';
-    const head = '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY</th><th>النسبة</th><th>المبلغ</th><th></th></tr></thead><tbody>';
+    const head = '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY (USD)</th><th>النسبة</th><th>المبلغ (USD)</th><th></th></tr></thead><tbody>';
     $('tab-comm').textContent = 'العمولات' + (d.pending.length ? ' (' + d.pending.length + ')' : '');
     $('commBody').innerHTML = '<h3>بانتظار الاعتماد</h3>' + (d.pending.length ? head + d.pending.map((c, i) => row(c, i, true)).join('') + '</tbody></table></div>' : '<p class="note">لا توجد عمولات معلقة.</p>') +
       '<h3>آخر القرارات</h3>' + (d.recent.length ? head + d.recent.map((c, i) => row(c, i, false)).join('') + '</tbody></table></div>' : '<p class="note">لا توجد قرارات بعد.</p>') +
@@ -636,13 +645,73 @@ function commReview(i, decision) {
   call('flowCommissionReview', [session, c.id, decision, why], r => { alert(decision === 'approve' ? 'تم اعتماد الاستحقاق (لم يُدفع شيء).' : 'تم الرفض.'); loadComm(); });
 }
 
+/* ---------- مستحقات النقاط (الإدارة) ---------- */
+let dp = null, dl = null;
+function loadDues() {
+  call('flowDuesPreview', [session], p => { dp = p; call('flowDuesList', [session], l => { dl = l; renderDues(); }); });
+}
+function renderDues() {
+  const p = dp, l = dl, cur = safe(p.currency);
+  let h = p.pointValueSet
+    ? '<p class="note">قيمة النقطة المعتمدة: <b>' + money(p.pointValue) + ' ' + cur + '</b> · سقف المكافأة: ' + safe(p.capPercent) + '% من الربح بعد العمولات (لكل طبيب، تراكمياً)</p>'
+    : '<p><span class="tag no">قيمة النقطة غير معتمدة</span> لا يُحوَّل شيء ولا يُفترض أي مبلغ قبل أن تعتمد القيمة.' +
+      (p.pointValueRaw ? ' <span class="note">(في الإعدادات قيمة ' + money(p.pointValueRaw) + ' لم تُعتمد بعد، وقد تكون قيمة افتراضية من التهيئة الأولى.)</span>' : '') + '</p>';
+  h += '<div class="row"><input id="pvIn" type="number" min="0" step="0.01" inputmode="decimal" placeholder="قيمة النقطة بـ ' + cur + '" value="' + (p.pointValueRaw || '') + '"><button class="ghost" onclick="setPv()">اعتماد قيمة النقطة</button></div>' +
+    '<p class="note">تسري القيمة على التحويلات القادمة فقط، وتحتفظ المستحقات السابقة بقيمتها وقت التحويل.</p>';
+  h += '<details style="margin:12px 0;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fafcfd"><summary style="cursor:pointer;font-weight:700">ما هو سقف ' + safe(p.capPercent) + '%؟</summary>' +
+    '<p>هو الحد الأعلى لمكافآت النقاط التي يمكن تحويلها إلى مال <b>عن طبيب واحد</b>: ' + safe(p.capPercent) + '% من الربح المتبقي من طلباته المؤهلة بعد خصم عمولات المندوبات، بتراكم كل طلباته.</p>' +
+    '<p><b>مثال:</b> طلب ثالث Supply ربحه 200 USD ← عمولة 30% = 60 ← المتبقي 140 ← السقف = ' + safe(p.capPercent) + '% × 140 = <b>' + money(140 * p.capPercent / 100) + ' USD</b>. فإذا كانت نقاط الطبيب تساوي 50 USD يُحوَّل ' + money(140 * p.capPercent / 100) + ' فقط ويبقى الباقي معلقاً حتى تزيد طلباته المؤهلة.</p>' +
+    '<ul class="note"><li>المتاح = السقف − ما حُوِّل سابقاً (مصروفاً أو مستحقاً)، فلا يُصرف مرتين.</li><li>السقف لكل طبيب مرة واحدة، ولا يتضاعف إذا تعاقبت عليه عدة مندوبات.</li><li>نقاط الطبيب لا تُفتح إلا بطلب مؤهل منه هو، ولا يفتحها شراء طبيب آخر.</li><li>لا يخفض نقاط التقييم المستخدمة للترقية، فهو يحدّ المال فقط.</li><li>يُغيَّر الرقم من ورقة الإعدادات بالمفتاح REWARD_CAP_PERCENT.</li></ul></details>';
+  h += '<h3>معاينة التحويل</h3>';
+  h += p.doctors.length ? '<div class="scroll"><table><thead><tr><th>الطبيب</th><th>طلبات مؤهلة</th><th>الربح بعد العمولات (USD)</th><th>السقف (USD)</th><th>حُوّل سابقاً (USD)</th><th>المتاح (USD)</th><th>نقاط معلقة</th><th>يُحوَّل الآن</th><th></th></tr></thead><tbody>' +
+    p.doctors.map(d => '<tr><td>' + safe(d.customer) + '</td><td>' + safe(d.orders) + '</td><td>' + money(d.profitAfter) + '</td><td>' + money(d.cap) + '</td><td>' + money(d.converted) + '</td><td>' + money(d.available) + '</td><td>' + safe(d.pending) + '</td><td><b>' + safe(d.take) + ' نقطة = ' + money(d.amount) + '</b>' +
+      (d.allocations.length ? '<br><span class="note">' + d.allocations.map(a => safe(a.rep) + ': ' + safe(a.pts)).join(' · ') + '</span>' : '') + '</td><td><span class="tag ' + (d.status === 'READY' ? 'ok' : 'wait') + '">' + safe(d.statusLabel) + '</span></td></tr>').join('') + '</tbody></table></div>'
+    : '<p class="note">لا توجد نقاط للتحويل بعد.</p>';
+  h += '<div class="row" style="margin-top:12px"><button class="btn" ' + (p.pointValueSet && p.total > 0 ? '' : 'disabled') + ' onclick="runDues()">تنفيذ التحويل (' + money(p.total) + ' ' + cur + ')</button></div>' +
+    '<p class="note">التحويل يُنشئ استحقاقاً فقط ولا يدفع مالاً. إعادة التشغيل آمنة: لا يُحوَّل ما سبق تحويله.</p>';
+  h += '<h3>مستحقات غير مصروفة</h3>';
+  h += l.accrued.length ? '<div class="scroll"><table><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll(\'.dueck\').forEach(x => x.checked = this.checked)"></th><th>المندوبة</th><th>الطبيب</th><th>النقاط</th><th>المبلغ (USD)</th><th>تاريخ التحويل</th></tr></thead><tbody>' +
+    l.accrued.map(x => '<tr><td><input type="checkbox" class="dueck" value="' + safe(x.id) + '"></td><td>' + safe(x.rep) + '</td><td>' + safe(x.customer) + '</td><td>' + safe(x.points) + '</td><td><b>' + money(x.amount) + '</b></td><td>' + safe(x.date) + '</td></tr>').join('') + '</tbody></table></div>' +
+    '<div class="row" style="margin-top:12px"><button class="btn ghost" onclick="payDues()">تسجيل صرف المحدد</button></div><p class="note">سجّل الصرف بعد أن تدفعه المالية فعلاً، مع الرقم المرجعي للدفع.</p>'
+    : '<p class="note">لا توجد مستحقات غير مصروفة.</p>';
+  h += '<h3>آخر المصروفات</h3>' + (l.paid.length ? '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الطبيب</th><th>النقاط</th><th>المبلغ (USD)</th><th>تاريخ التحويل</th></tr></thead><tbody>' +
+    l.paid.map(x => '<tr><td>' + safe(x.rep) + '</td><td>' + safe(x.customer) + '</td><td>' + safe(x.points) + '</td><td>' + money(x.amount) + '</td><td>' + safe(x.date) + '</td></tr>').join('') + '</tbody></table></div>' : '<p class="note">لا توجد مصروفات مسجلة.</p>');
+  $('duesBody').innerHTML = h;
+}
+function setPv() {
+  const v = Number($('pvIn').value);
+  if (!(v > 0)) return alert('أدخل قيمة صالحة للنقطة.');
+  if (!confirm('اعتماد قيمة النقطة ' + v + ' ' + dp.currency + '؟ سيُستخدم هذا الرقم في حساب المستحقات.')) return;
+  call('flowPointValueSet', [session, v], r => { alert(r.message || 'تم'); loadDues(); });
+}
+function runDues() {
+  if (!confirm('تحويل النقاط المؤهلة إلى مستحقات بقيمة ' + money(dp.total) + ' ' + dp.currency + '؟ هذا لا يدفع أي مبلغ.')) return;
+  call('flowDuesRun', [session], r => { alert(r.message || 'تم'); loadDues(); });
+}
+function payDues() {
+  const ids = Array.from(document.querySelectorAll('.dueck')).filter(x => x.checked).map(x => x.value);
+  if (!ids.length) return alert('اختر استحقاقاً واحداً على الأقل.');
+  const ref = prompt('الرقم المرجعي للدفع (إلزامي):') || ''; if (ref.trim().length < 3) return;
+  const note = prompt('ملاحظة (اختياري):') || '';
+  call('flowDuesPay', [session, ids, ref, note], r => { alert(r.message || 'تم'); loadDues(); });
+}
+
 function loadWallet() {
   call('flowMyWallet', [session], d => {
-    let h = '<div class="tiles">' + metric('عمولات معتمدة (مستحقة)', money(d.totals.approved), 'hero') + metric('عمولات قيد الاعتماد', money(d.totals.pending)) +
+    let h = '<div class="tiles">' + metric('عمولات معتمدة (مستحقة، USD)', money(d.totals.approved), 'hero') + metric('عمولات قيد الاعتماد (USD)', money(d.totals.pending)) +
       metric('رصيد النقاط', d.points == null ? '—' : d.points) + '</div>';
     if (!d.pointValueSet) h += '<p class="note">قيمة النقطة غير محددة بعد، لذلك تُعرض النقاط كتقييم ولا يوجد مبلغ نقدي مقابلها.</p>';
+    if (d.dues) {
+      const u = d.dues, cur = safe(u.currency);
+      h += '<h3>نقاطي المالية</h3><div class="tiles">' + metric('نقاط التقييم المعتمدة', u.evaluation, 'hero') + metric('معلقة مالياً: بانتظار طلب مؤهل للطبيب', u.pendingBlocked) +
+        metric('مؤهلة ولم تُحوَّل بعد', u.pendingEligible) + metric('نقاط محوّلة إلى مستحقات', u.converted) +
+        metric('مستحقات غير مصروفة', money(u.accrued) + ' ' + cur) + metric('مبالغ مصروفة', money(u.paid) + ' ' + cur) + '</div>';
+      h += u.recent.length ? '<div class="scroll"><table><thead><tr><th>تاريخ التحويل</th><th>النقاط</th><th>المبلغ (USD)</th><th>الحالة</th></tr></thead><tbody>' +
+        u.recent.map(x => '<tr><td>' + safe(x.date) + '</td><td>' + safe(x.points) + '</td><td><b>' + money(x.amount) + '</b></td><td><span class="tag ' + (DST[x.status] || ['', ''])[1] + '">' + safe((DST[x.status] || [x.status])[0]) + '</span></td></tr>').join('') + '</tbody></table></div>' : '';
+      h += '<p class="note">تبقى النقاط معلقة مالياً حتى يكمل الطبيب نفسه طلباً مؤهلاً، وتُحوَّل ضمن سقف 20% من الربح المتبقي من طلباته بعد العمولات. نقاط التقييم لا تنقص عند التحويل.</p>';
+    }
     h += '<h3>تفاصيل العمولات</h3>';
-    h += d.commissions.length ? '<div class="scroll"><table><thead><tr><th>التاريخ</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY</th><th>النسبة</th><th>المبلغ</th><th>الحالة</th></tr></thead><tbody>' +
+    h += d.commissions.length ? '<div class="scroll"><table><thead><tr><th>التاريخ</th><th>الطبيب / الطلب</th><th>سبب النسبة</th><th>ربح DENTLY (USD)</th><th>النسبة</th><th>المبلغ (USD)</th><th>الحالة</th></tr></thead><tbody>' +
       d.commissions.map(c => '<tr><td>' + safe(c.date) + '</td><td>' + safe(c.customer) + '<br><span class="note">' + safe(c.order) + ' · ' + safe(c.path) + '</span></td><td>' + safe(c.reason) + '</td><td>' + money(c.profit) + '</td><td>' + Math.round(c.rate * 100) + '%</td><td><b>' + money(c.amount) + '</b></td><td><span class="tag ' + (CST[c.status] || ['', ''])[1] + '">' + safe((CST[c.status] || [c.status])[0]) + '</span>' + (c.note ? '<br><span class="note">' + safe(c.note) + '</span>' : '') + '</td></tr>').join('') + '</tbody></table></div>'
       : '<p class="note">لا توجد عمولات بعد. تظهر هنا بعد اعتماد الإدارة لطلب مؤهل.</p>';
     h += '<p class="note">الصرف الفعلي تعتمده الإدارة بشكل منفصل؛ ظهور المبلغ هنا لا يعني أنه صُرف.</p>';
