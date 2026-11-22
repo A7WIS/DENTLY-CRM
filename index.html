@@ -262,11 +262,11 @@ tbody tr:hover{background:#fafcfd}
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.10.1';
+const UI_VERSION = '1.10.2';
 function showPageError(msg) { const b = document.getElementById('banner'); if (!b) return; b.textContent = 'خطأ في الصفحة: ' + msg; b.classList.remove('hidden'); }
 window.addEventListener('error', ev => showPageError(ev.message || 'غير معروف'));
 window.addEventListener('unhandledrejection', ev => showPageError((ev.reason && ev.reason.message) || String(ev.reason)));
-const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 3, Flow_18: 3 };
+const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 3, Flow_18: 4 };
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
