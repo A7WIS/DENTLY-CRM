@@ -125,9 +125,11 @@ tbody tr:hover{background:#fafcfd}
     <button onclick="tab('sales')" id="tab-sales">المبيعات</button>
     <button onclick="tab('comm')" id="tab-comm">العمولات</button>
     <button onclick="tab('dues')" id="tab-dues">المستحقات</button>
+    <button onclick="tab('promos')" id="tab-promos">الترقيات</button>
     <button onclick="tab('reps')" id="tab-reps">الرتب</button>
     <button onclick="tab('mine')" id="tab-mine">حسابي</button>
     <button onclick="tab('tasks')" id="tab-tasks">مهامي</button>
+    <button onclick="tab('career')" id="tab-career">مساري الوظيفي</button>
     <button onclick="tab('wallet')" id="tab-wallet">محفظتي</button>
     <button onclick="tab('logAct')" id="tab-logAct">تسجيل تواصل / زيارة</button>
     <button onclick="tab('overview')" id="tab-overview">الأداء</button>
@@ -198,6 +200,17 @@ tbody tr:hover{background:#fafcfd}
       <div id="tasksBody"></div>
     </section>
 
+    <section id="career" class="card view hidden">
+      <h2>مساري الوظيفي</h2>
+      <div id="careerBody"></div>
+    </section>
+
+    <section id="promos" class="card view hidden">
+      <h2>الترقيات والمسار الوظيفي</h2>
+      <div id="promoBody"></div>
+      <div id="promoDetail"></div>
+    </section>
+
     <section id="logAct" class="card view hidden">
       <h2>تسجيل تواصل أو زيارة</h2>
       <div class="form">
@@ -262,11 +275,11 @@ tbody tr:hover{background:#fafcfd}
 
 <script src="config.js"></script>
 <script>
-const UI_VERSION = '1.10.2';
+const UI_VERSION = '1.11';
 function showPageError(msg) { const b = document.getElementById('banner'); if (!b) return; b.textContent = 'خطأ في الصفحة: ' + msg; b.classList.remove('hidden'); }
 window.addEventListener('error', ev => showPageError(ev.message || 'غير معروف'));
 window.addEventListener('unhandledrejection', ev => showPageError((ev.reason && ev.reason.message) || String(ev.reason)));
-const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 7, Flow_16: 7, Flow_17: 3, Flow_18: 4 };
+const REQ_BUILD = { Flow_11: 7, Flow_12: 7, Flow_13: 7, Flow_14: 8, Flow_16: 7, Flow_17: 3, Flow_18: 4, Flow_19: 2 };
 let session = sessionStorage.getItem('dently_session') || '', user = null;
 let cur = '', curData = null, rows = [];
 const $ = id => document.getElementById(id);
@@ -308,6 +321,7 @@ function start() {
     $('rep').classList.toggle('hidden', !isAdmin); $('teamBtn').classList.toggle('hidden', !isAdmin);
     $('tab-newCustomer').classList.toggle('hidden', isAdmin);
     $('tab-overview').classList.toggle('hidden', !isAdmin); $('tab-mine').classList.toggle('hidden', isAdmin);
+    $('tab-career').classList.toggle('hidden', isAdmin); $('tab-promos').classList.toggle('hidden', !isAdmin);
     if (isAdmin) $('rep').innerHTML = r.reps.map(x => '<option value="' + safe(x.id) + '">' + safe(x.name) + ' · ' + safe(x.rank || '') + '</option>').join('');
     $('tab-review').classList.toggle('hidden', !isAdmin); $('tab-reps').classList.toggle('hidden', !isAdmin); $('tab-sales').classList.toggle('hidden', !isAdmin); $('tab-comm').classList.toggle('hidden', !isAdmin); $('tab-dues').classList.toggle('hidden', !isAdmin); $('tab-wallet').classList.toggle('hidden', isAdmin); $('tab-tasks').classList.toggle('hidden', isAdmin); $('tab-logAct').classList.toggle('hidden', isAdmin); $('goLog').classList.toggle('hidden', isAdmin);
     tab(isAdmin ? 'review' : 'mine');
@@ -344,6 +358,8 @@ function tab(id) {
   if (id === 'sales') loadSales();
   if (id === 'comm') loadComm();
   if (id === 'dues') loadDues();
+  if (id === 'career') loadCareer();
+  if (id === 'promos') loadPromos();
   if (id === 'wallet') loadWallet();
   if (id === 'overview') loadPerformance();
 }
@@ -560,6 +576,88 @@ function saveRank(i) {
   const eff = prompt('تاريخ سريان القرار (YYYY-MM-DD):', today()); if (!eff) return;
   const why = prompt('سبب القرار (إلزامي):') || ''; if (why.trim().length < 3) return;
   call('flowSetRank', [session, x.id, code, eff.trim(), why], r => { alert(r.message || 'تم'); loadReps(); });
+}
+
+/* ---------- مساري الوظيفي والترقيات ---------- */
+let pmList = [], pc = null;
+const CK = { OK: ['مستوفى', 'ok'], FAIL: ['غير مستوفى', 'no'], MISSING: ['بانتظار بيانات', 'wait'] };
+function chkVal(c) {
+  if (c.key === 'mandatory') return '';
+  if (c.key === 'audit') return c.value == null ? '—' : safe(c.value) + '%';
+  const u = c.money ? ' USD' : '';
+  return safe(c.value) + u + (c.target == null ? '' : ' / ' + safe(c.target) + u);
+}
+function chkRows(list) {
+  return '<div class="scroll"><table><thead><tr><th>الشرط</th><th>النتيجة</th><th>الحالة</th></tr></thead><tbody>' + list.map(c => {
+    const k = CK[c.state] || [c.state, 'wait'];
+    return '<tr><td>' + safe(c.label) + (c.note ? '<br><span class="note">' + safe(c.note) + '</span>' : '') + '</td><td>' + chkVal(c) + (c.numeric && c.target > 0 ? bar(c.value, c.target) : '') + '</td><td><span class="tag ' + k[1] + '">' + k[0] + '</span></td></tr>';
+  }).join('') + '</tbody></table></div>';
+}
+function careerHtml(d) {
+  if (d.top) return '<p><span class="tag ok">' + safe(d.rank.label) + '</span> هذه أعلى رتبة في السلم الوظيفي.</p>';
+  const cls = { ELIGIBLE: 'ok', APPROVED: 'ok', WAITING_VACANCY: 'wait', EVALUATING: 'wait', PENDING_DATA: 'wait', NOT_MET: 'no', REJECTED: 'no' }[d.status.code] || 'wait';
+  let h = '<p><span class="tag ok">' + safe(d.rank.label) + '</span> الرتبة التالية: <b>' + safe(d.next.label) + '</b> · المطلوب ' + safe(d.need) + ' أشهر متتالية مستوفية</p>' +
+    '<div class="tiles">' + metric('الحالة', d.status.label, 'hero') + metric('الأشهر المستوفاة', d.consecutive + ' / ' + d.need) + metric('المؤشر الإجمالي (الأدنى بين الشروط)', d.overallPct + '%') + '</div>';
+  h += d.missing.length ? '<p><span class="tag wait">ينقصك: ' + d.missing.map(safe).join(' و') + '</span></p>' : '';
+  if (d.request) h += '<p class="note">طلب الترقية: ' + safe(d.request.state === 'ELIGIBLE' ? 'بانتظار مراجعة الإدارة' : d.request.state === 'WAITING_VACANCY' ? 'بانتظار شاغر' : d.request.state === 'APPROVED' ? 'معتمد' : 'مرفوض') + ' · تُراجَع حتى ' + safe(d.request.due) + (d.request.reason ? ' · ' + safe(d.request.reason) : '') + '</p>';
+  h += '<h3>الشهر الجاري (' + safe(d.current.month) + ') — تقدّم فقط</h3>' + chkRows(d.current.checks);
+  if (d.structure && d.structure.length) h += '<h3>الهيكل والقسم</h3>' + chkRows(d.structure.map(s => ({ label: s.label, state: s.state, key: 'x', value: s.value, target: s.target, note: s.note })));
+  if (d.history.length) h += '<h3>الأشهر المكتملة</h3><div class="row">' + d.history.map(x => '<span class="tag ' + (x.success ? 'ok' : (x.pending ? 'wait' : 'no')) + '">' + safe(x.month) + ' — ' + (x.success ? 'مستوفى' : (x.pending ? 'بانتظار بيانات' : 'غير مستوفى')) + '</span>').join('') + '</div>';
+  h += '<h3>شروط إدارية تُقرّها الإدارة عند الاعتماد</h3><ul class="note">' + d.attest.map(a => '<li>' + safe(a.label) + '</li>').join('') + '</ul>';
+  h += '<ul class="note">' + d.notes.map(n => '<li>' + safe(n) + '</li>').join('') + '</ul><p class="note">آخر تحديث للبيانات: ' + safe(d.updatedAt) + '</p>';
+  return h;
+}
+function loadCareer() { call('flowCareer', [session, ''], d => { $('careerBody').innerHTML = careerHtml(d); }); }
+
+function loadPromos() {
+  call('flowCareerAdmin', [session], list => {
+    pmList = list;
+    const prev = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.toISOString().slice(0, 7); })();
+    const cls = { ELIGIBLE: 'ok', WAITING_VACANCY: 'wait', EVALUATING: 'wait', PENDING_DATA: 'wait', NOT_MET: 'no', TOP: 'ok' };
+    let h = '<div class="scroll"><table><thead><tr><th>المندوبة</th><th>الرتبة</th><th>التالية</th><th>الحالة</th><th>أشهر</th><th>المؤشر</th><th></th></tr></thead><tbody>' +
+      list.map((x, i) => '<tr><td>' + safe(x.name) + '</td><td>' + safe(x.rank) + '</td><td>' + safe(x.next || '—') + '</td><td><span class="tag ' + (cls[x.status] || 'wait') + '">' + safe(x.statusLabel) + '</span></td><td>' + (x.need ? safe(x.consecutive) + ' / ' + safe(x.need) : '—') + '</td><td>' + (x.pct == null ? '—' : safe(x.pct) + '%') + '</td><td style="white-space:nowrap"><button class="btn ghost" onclick="viewCareer(' + i + ')">المسار</button></td></tr>').join('') + '</tbody></table></div>';
+    h += '<h3>تدقيق السجلات الشهري (شرط 95%)</h3><div class="form"><div class="f"><label>المندوبة</label><select id="auRep">' + list.map((x, i) => '<option value="' + i + '">' + safe(x.name) + '</option>').join('') + '</select></div>' +
+      '<div class="f"><label>الشهر</label><input type="month" id="auMonth" value="' + prev + '"></div>' +
+      '<div class="f"><label>عدد السجلات المدققة</label><input type="number" id="auS" min="1" inputmode="numeric"></div><div class="f"><label>عدد الصحيح منها</label><input type="number" id="auC" min="0" inputmode="numeric"></div>' +
+      '<div class="f full"><label>ملاحظات</label><input id="auN"></div><div class="f full"><button onclick="saveAudit()">حفظ نتيجة التدقيق</button></div></div>' +
+      '<p class="note">غياب نتيجة التدقيق لا يُعدّ جودة 100%: يظهر «بانتظار التدقيق» ولا تكتمل الأشهر بدونه.</p><div id="promoLog"></div>';
+    $('promoBody').innerHTML = h;
+    call('flowPromotionList', [session], r => {
+      $('promoLog').innerHTML = r.length ? '<h3>طلبات الترقية</h3><div class="scroll"><table><thead><tr><th>المندوبة</th><th>من ← إلى</th><th>الحالة</th><th>تاريخ الفتح</th><th>مراجعة حتى</th><th>سريان</th></tr></thead><tbody>' +
+        r.map(x => '<tr><td>' + safe(x.rep) + '</td><td>' + safe(x.from) + ' ← ' + safe(x.to) + '</td><td><span class="tag ' + (x.state === 'APPROVED' ? 'ok' : x.state === 'REJECTED' ? 'no' : 'wait') + '">' + safe(x.stateLabel) + '</span>' + (x.overdue ? ' <span class="tag no">تجاوز 5 أيام</span>' : '') + '</td><td>' + safe(x.created) + '</td><td>' + safe(x.due) + '</td><td>' + safe(x.effective) + '</td></tr>').join('') + '</tbody></table></div>' : '';
+    });
+  });
+}
+function viewCareer(i) {
+  call('flowCareer', [session, pmList[i].id], d => {
+    pc = d; pc.idx = i;
+    let h = '<div class="card" style="margin-top:14px"><h2>' + safe(d.name) + '</h2>' + careerHtml(d);
+    const code = d.status && d.status.code, st = d.request && d.request.state;
+    if (!d.top && (code === 'ELIGIBLE' || code === 'WAITING_VACANCY')) {
+      if (!d.request || !['ELIGIBLE', 'WAITING_VACANCY'].includes(st)) h += '<p><button class="btn" onclick="openPromo()">فتح طلب الترقية</button></p>';
+      else {
+        h += '<h3>قرار الترقية (يُتخذ خلال 5 أيام عمل)</h3><div class="form"><div class="f full"><label>الإقرارات الإدارية — كلها مطلوبة للاعتماد</label><div class="chips">' +
+          d.attest.map(a => '<label class="chip"><input type="checkbox" class="pdAt" value="' + safe(a.key) + '"> ' + safe(a.label) + '</label>').join('') + '</div></div>' +
+          '<div class="f"><label>تاريخ السريان</label><input type="date" id="pdEff" value="' + today() + '" min="' + today() + '"></div>' +
+          (d.salaried ? '<div class="f"><label>مرجع اتفاق العمل</label><input id="pdAgr" placeholder="رقم/تاريخ الاتفاق"></div>' : '') +
+          '<div class="f full"><label>ملاحظات / سبب الرفض</label><textarea id="pdNote"></textarea></div>' +
+          '<div class="f full row"><button onclick="decidePromo(\'approve\')">اعتماد الترقية</button><button class="ghost" onclick="decidePromo(\'waitlist\')">بانتظار شاغر</button><button class="ghost" onclick="decidePromo(\'reject\')">رفض بسبب موثّق</button></div></div>';
+      }
+    }
+    $('promoDetail').innerHTML = h + '</div>';
+    $('promoDetail').scrollIntoView({ behavior: 'smooth' });
+  });
+}
+function openPromo() { call('flowPromotionOpen', [session, pc.srId], r => { alert(r.message); viewCareer(pc.idx); }); }
+function decidePromo(decision) {
+  const keys = Array.from(document.querySelectorAll('.pdAt')).filter(x => x.checked).map(x => x.value);
+  const agr = $('pdAgr') ? $('pdAgr').value : '';
+  if (decision === 'reject' && !confirm('رفض الطلب بسبب موثّق؟')) return;
+  call('flowPromotionDecide', [session, pc.request.id, decision, $('pdEff').value, keys, $('pdNote').value, agr], r => { alert(r.message); loadPromos(); $('promoDetail').innerHTML = ''; });
+}
+function saveAudit() {
+  const x = pmList[Number($('auRep').value)];
+  call('flowAuditSave', [session, x.id, $('auMonth').value, $('auS').value, $('auC').value, $('auN').value], r => { alert(r.message); $('auS').value = ''; $('auC').value = ''; $('auN').value = ''; });
 }
 
 /* ---------- فحص الحساب ---------- */
